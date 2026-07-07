@@ -12,12 +12,19 @@ library(openxlsx)
 library(readxl)
 library(corrplot)
 
-setwd("C:/Users/Helio/OneDrive/Documents/Analise_regressao_linear/trabalho")
+#setwd("C:/Users/Helio/OneDrive/Documents/Analise_regressao_linear/trabalho")
 
 database <- read.xlsx("dados_trabalho.xlsx")
 
 # Criar taxa de crimes por 100.000 habitantes
 database$taxa_crimes <- database$x9 / database$x4 * 100000
+
+# Criando a taxa de médicos por 100.00 habitantes
+database$taxa_medicos <- database$x7 / database$x4 * 100000
+
+# Criando a taxa de leitos por 100.00 habitantes
+database$taxa_leitos <- database$x8 / database$x4 * 100000
+
 
 # Região como fator com rótulos
 database$x16 <- factor(database$x16, levels = 1:4,
@@ -31,9 +38,10 @@ head(database)
 
 ```{r}
 
-set.seed(123)
+set.seed(0038) # Define a seed para garantir que o resultado seja o mesmo se rodar novamente
+n_amostra = 300 # Tamanho da amostra
 
-indices_amostra <- sample(1:nrow(database), size = 30, replace = FALSE)
+indices_amostra <- sample(1:nrow(database), size = n_amostra, replace = FALSE)
 
 dados_modelo    <- database[indices_amostra, ]
 dados_validacao <- database[-indices_amostra, ]
@@ -48,17 +56,17 @@ cat("Observações para validação:  ", nrow(dados_validacao), "\n")
 ```{r}
 
 classificacao <- data.frame(
-  Código      = c("x3","x4","x5","x6","x7","x8","x9","x10","x11","x12","x13","x14","x15","x16","taxa_crimes"),
-  Descrição   = c("Área da cidade (mi²)","População total","% pop. 18-34 anos",
+  Código      = c("ID","x1","x2","x3","x4","x5","x6","x7","x8","x9","x10","x11","x12","x13","x14","x15","x16","taxa_crimes"),
+  Descrição   = c("Número de Idendifcação","Nome da Cidade", "Abreviação do nome do Estado","Área da cidade (mi²)","População total","% pop. 18-34 anos",
                   "% pop. 65+ anos","Médicos ativos","Leitos hospitalares",
                   "Total de crimes","% ensino médio completo","% bacharéis",
                   "% abaixo da pobreza","% desempregados","Renda per capita",
                   "Renda total (mi USD)","Região geográfica","Taxa de crimes/100k hab."),
-  Tipo        = c("Quantitativa","Quantitativa","Quantitativa","Quantitativa",
+  Tipo        = c("Quantitativa","Categórica Nominal","Categórica Nominal","Quantitativa","Quantitativa","Quantitativa","Quantitativa",
                   "Quantitativa","Quantitativa","Quantitativa","Quantitativa",
                   "Quantitativa","Quantitativa","Quantitativa","Quantitativa",
                   "Quantitativa","Qualitativa","Quantitativa"),
-  Escala      = c("Razão","Razão","Razão","Razão","Razão","Razão","Razão",
+  Escala      = c("Intervalo","Nominal","Nominal","Razão","Razão","Razão","Razão","Razão","Razão","Razão",
                   "Razão","Razão","Razão","Razão","Razão","Razão","Nominal","Razão")
 )
 
@@ -71,24 +79,34 @@ knitr::kable(classificacao, caption = "Classificação das variáveis do estudo"
 ### Medidas Resumo
 
 ```{r}
-
+# Nome das variáveis
 vars_num <- dados_modelo[, c("x3","x4","x5","x6","x7","x8","x9",
                               "x10","x11","x12","x13","x14","x15","taxa_crimes")]
 
+
+# Descrição das variáveis
+vars_desc <- c("Área da cidade (mi²)","População total","% pop. 18-34 anos",
+                  "% pop. 65+ anos","Médicos ativos","Leitos hospitalares",
+                  "Total de crimes","% ensino médio completo","% bacharéis",
+                  "% abaixo da pobreza","% desempregados","Renda per capita",
+                  "Renda total (mi USD)","Taxa de crimes/100k hab.")
+
 resumo <- data.frame(
-  Variável = names(vars_num),
-  N        = sapply(vars_num, function(x) sum(!is.na(x))),
+  Variável = vars_desc,
   Média    = sapply(vars_num, mean, na.rm = TRUE),
   Mediana  = sapply(vars_num, median, na.rm = TRUE),
   DP       = sapply(vars_num, sd, na.rm = TRUE),
   Mín      = sapply(vars_num, min, na.rm = TRUE),
-  Máx      = sapply(vars_num, max, na.rm = TRUE)
+  Máx      = sapply(vars_num, max, na.rm = TRUE),
+  CV_pct = sapply(vars_num, function(x){
+    (sd(x, na.rm = TRUE) / mean(x, na.rm = TRUE)) *100
+  })
 )
 
-resumo[, 3:7] <- round(resumo[, 3:7], 2)
+resumo[, 2:7] <- round(resumo[, 2:7], 2)
 
 knitr::kable(resumo, row.names = FALSE,
-             caption = "Estatísticas descritivas — amostra de modelagem (n=30)")
+             caption = "Estatísticas descritivas — amostra de modelagem (n=300)")
 
 ```
 
@@ -127,10 +145,10 @@ ggplot(vars_box, aes(x = variavel, y = valor)) +
 
 ```{r, fig.width=8, fig.height=5}
 
-ggplot(dados_modelo, aes(x = x16, y = x7, fill = x16)) +
+ggplot(dados_modelo, aes(x = x16, y = taxa_medicos, fill = x16)) +
   geom_boxplot(alpha = 0.7) +
-  labs(title = "Médicos ativos por região geográfica",
-       x = "Região", y = "Médicos ativos") +
+  labs(title = "Taxa Médicos ativos por região geográfica",
+       x = "Região", y = "Taxa de Médicos por 100.000 hab.") +
   theme_minimal() +
   theme(legend.position = "none")
 
@@ -146,6 +164,17 @@ ggplot(dados_modelo, aes(x = x16, y = taxa_crimes, fill = x16)) +
   theme(legend.position = "none")
 
 ```
+```{r, fig.width=8, fig.height=5}
+
+ggplot(dados_modelo, aes(x = x16, y = taxa_leitos, fill = x16)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Taxa de leitos por região geográfica",
+       x = "Região", y = "Taxa de leitos por 100.000 hab.") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+```
+
 
 ### Histogramas
 
@@ -174,14 +203,57 @@ ggplot(vars_hist, aes(x = valor)) +
 ```{r, fig.width=9, fig.height=8}
 
 vars_cor <- dados_modelo %>%
-  select(x4, x5, x6, x7, x8, x10, x11, x12, x13, x14, x15, taxa_crimes)
+  select(x4, x5, x6, x7, x8, x10, x11, x12, x13, x14, x15, taxa_crimes, taxa_medicos, taxa_leitos)
 
 names(vars_cor) <- c("Pop.total","% 18-34","% 65+","Médicos","Leitos",
                      "% Ens.médio","% Bacharéis","% Pobreza",
-                     "% Desemprego","Renda p.c.","Renda total","Taxa crimes")
+                     "% Desemprego","Renda p.c.","Renda total","Taxa crimes", "Taxa Médicos", "Taxa Leitos")
 
 matriz_cor <- cor(vars_cor, use = "complete.obs")
 
+corrplot(matriz_cor,
+         method  = "color",
+         type    = "upper",
+         addCoef.col = "black",
+         number.cex  = 0.6,
+         tl.cex  = 0.8,
+         tl.col  = "black",
+         col     = colorRampPalette(c("#d73027","white","#1a9850"))(200),
+         title   = "Matriz de correlação entre as variáveis",
+         mar     = c(0, 0, 2, 0))
+
+```
+
+### Gráfico de Correlação com a Região Geográfica
+
+```{r, fig.width=9, fig.height=8}
+
+
+
+# Selecionar as variáveis numéricas (usando o seu código)
+vars_num <- dados_modelo %>%
+  select(x4, x5, x6, x10, x11, x12, x13, x14, x15, taxa_crimes, taxa_medicos, taxa_leitos)
+
+# 3. Renomear as variáveis numéricas
+names(vars_num) <- c("Pop.total","% 18-34","% 65+",
+                     "% Ens.médio","% Bacharéis","% Pobreza",
+                     "% Desemprego","Renda p.c.","Renda total","Taxa crimes", 
+                     "Taxa Médicos", "Taxa Leitos")
+
+# 4. Criar as dummies para a região (o '-1' garante que tenhamos 4 colunas, uma para cada região)
+dummies_regiao <- model.matrix(~ x16 - 1, data = dados_modelo)
+
+# Limpar os nomes das colunas de região para o gráfico ficar elegante
+colnames(dummies_regiao) <- c("Região 1", "Região 2", "Região 3", "Região 4")
+
+# 5. Unir as variáveis numéricas com as dummies de região
+vars_cor <- cbind(vars_num, dummies_regiao)
+
+# 6. Calcular a matriz de correlação
+matriz_cor <- cor(vars_cor, use = "complete.obs")
+
+# 7. Gerar o gráfico (seu código exato)
+library(corrplot) # Certifique-se de carregar o pacote
 corrplot(matriz_cor,
          method  = "color",
          type    = "upper",
