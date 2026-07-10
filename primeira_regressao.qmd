@@ -1,0 +1,127 @@
+---
+title: "trabalho_regressao_linear(Primeira Regressão)"
+format: html
+---
+
+
+```{r, message=FALSE, warning=FALSE}
+
+library(ggplot2)
+library(tidyverse)
+library(openxlsx)
+library(readxl)
+library(corrplot)
+library(leaps) # Usado no método BACKWARD
+
+#setwd("C:/Users/Helio/OneDrive/Documents/Analise_regressao_linear/trabalho")
+
+database <- read.xlsx("dados_amostra.xlsx")
+
+# Criar taxa de crimes por 100.000 habitantes
+database$taxa_crimes <- database$x9 / database$x4 * 100000
+
+# Criando a taxa de médicos por 100.00 habitantes
+database$taxa_medicos <- database$x7 / database$x4 * 100000
+
+# Criando a taxa de leitos por 100.00 habitantes
+database$taxa_leitos <- database$x8 / database$x4 * 100000
+
+
+head(database)
+
+```
+
+# Criando os DataFrames
+
+Temos duas hipóteses de trabalho presentes nesta análise:
+
+* **Hipótese I (Oferta de Médicos):** Espera-se que o número de médicos ativos em uma cidade esteja relacionado com:
+    * População total;
+    * Número de leitos hospitalares;
+    * Renda total;
+    * Região geográfica (efeito de variação regional).
+
+* **Hipótese II (Violência):** A taxa de crimes (por 100.000 habitantes) está associada a:
+    * Características sócio-demográficas;
+    * Outros aspectos estruturais da cidade.
+    
+Por isso serão secregados as análises de modelos assim como dataframes contendo as variáveis
+
+```{r, fig.width=10, fig.height=8}
+
+# Removendo possíveis valores nulos
+df_clean <- na.omit(database)
+
+# Criando um dataframe para as análises
+
+# PRIMEIRA HIPÓTESE
+df_clean1 <- subset(df_clean, select = c(x7, x4, x8, x15, x16, taxa_leitos))
+
+# SEGUNDA HIPÓTESE
+df_clean2 <- subset(df_clean, select = c(taxa_crimes, x3, x5, x6, x10, x11, x12, x13, x14, x15, x16))
+
+```
+
+
+# Seleção das Variáveis
+
+
+
+````{r, fig.width=10, fig.height=8}
+
+# PRIMEIRA HIPÓTESE
+# Para a seleção das variáveis iremos utilizar o modelo BACKWARD
+# Dessa forma iremos verificar se as variáveis que mais se ajustam são as mesmas da hipótese
+
+
+# Seleção Automática de Variáveis
+all_models1 <- regsubsets( x7 ~ ., data= df_clean1, nvmax= ncol(df_clean1) -1, method = "exhaustive", really.big = TRUE)
+
+# Resumo dos Resultados
+resumo1 <- summary(all_models1)
+resumo1
+
+# Podemos observar que o melhor modelo é o com 3 variávies (x4, x8, x15)
+# Plot do Cp
+plot(resumo1$cp,
+     xlab= "Número de Variáveis",
+     ylab= "Cp de Mallows", 
+     type= "b",
+     pch= 19,
+     col= "blue",
+     main= "Seleção de Modelos 1: AIC vs Número de Variáveis"
+     )
+abline(h= min(resumo1$cp), col= "red", lty= 2)
+grid(nx = NULL, ny = NULL, col = "lightgray", lty = "dotted")
+
+````
+
+````{r, fig.width=10, fig.height=8}
+
+# SEGUNDA HIPÓTESE
+# Para a seleção das variáveis iremos utilizar o modelo BACKWARD
+# Dessa forma iremos verificar se as variáveis que mais se ajustam são as mesmas da hipótese
+
+
+
+# Seleção Automática de Variáveis
+all_models2 <- regsubsets(taxa_crimes ~ ., data= df_clean2, nvmax= ncol(df_clean2) -1, method = "exhaustive", really.big = TRUE)
+
+# Resumo dos Resultados
+resumo2 <- summary(all_models2)
+resumo2
+
+# Podemos observar que o melhor modelo é o com 4 variávies (x5, x12, x14, x16)
+# Plot do Cp
+plot(resumo2$cp,
+     xlab= "Número de Variáveis",
+     ylab= "Cp de Mallows", 
+     type= "b",
+     pch= 19,
+     col= "blue",
+     main= "Seleção de Modelos 2: AIC vs Número de Variáveis"
+     )
+abline(h= min(resumo2$cp), col= "red", lty= 2)
+grid(nx = NULL, ny = NULL, col = "lightgray", lty = "dotted")
+
+````
