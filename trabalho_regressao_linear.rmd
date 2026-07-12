@@ -10,6 +10,8 @@ library(tidyverse)
 library(openxlsx)
 library(readxl)
 library(corrplot)
+library(car)
+library(lmtest)
 
 setwd("C:/Users/Helio/OneDrive/Documents/Analise_regressao_linear/trabalho")
 
@@ -124,7 +126,9 @@ resumo <- data.frame(
   Máx      = sapply(vars_num, max, na.rm = TRUE)
 )
 
-resumo[, 3:7] <- round(resumo[, 3:7], 2)
+resumo$CV_pct <- resumo$DP / resumo$Média * 100
+
+resumo[, 3:8] <- round(resumo[, 3:8], 2)
 
 knitr::kable(resumo, row.names = FALSE,
              caption = "Estatísticas descritivas — amostra de modelagem (n=30)")
@@ -143,8 +147,10 @@ porém sem a assimetria extrema das variáveis de porte, já que a própria norm
 
 ```{r, echo=FALSE}
 
+freq_regiao <- table(dados_modelo$x16)
+
 knitr::kable(
-  table(dados_modelo$x16),
+  freq_regiao,
   col.names = c("Região", "Frequência"),
   caption   = "Frequência de cidades por região geográfica — amostra de modelagem"
 )
@@ -163,7 +169,7 @@ cidades (`r round(prop.table(freq_regiao)["Norte-Central"]*100,1)`%).
 vars_box <- dados_modelo %>%
   select(x4, x7, x8, x14, x15, taxa_crimes) %>%
   pivot_longer(everything(), names_to = "variavel", values_to = "valor") %>%
-  mutate(variavel = recode(variavel,
+  mutate(variavel = dplyr::recode(variavel,
     x4 = "População total", x7 = "Médicos ativos",
     x8 = "Leitos hospitalares", x14 = "Renda per capita",
     x15 = "Renda total", taxa_crimes = "Taxa de crimes/100k"))
@@ -222,7 +228,7 @@ do que já é capturado pelas demais variáveis.
 vars_hist <- dados_modelo %>%
   select(x4, x5, x6, x7, x8, x10, x11, x12, x13, x14, x15, taxa_crimes) %>%
   pivot_longer(everything(), names_to = "variavel", values_to = "valor") %>%
-  mutate(variavel = recode(variavel,
+  mutate(variavel = dplyr::recode(variavel,
     x4 = "Pop. total", x5 = "% 18-34 anos", x6 = "% 65+ anos",
     x7 = "Médicos ativos", x8 = "Leitos hosp.", x10 = "% Ens. médio",
     x11 = "% Bacharéis", x12 = "% Pobreza", x13 = "% Desemprego",
@@ -282,10 +288,10 @@ nos modelos ajustados a seguir.
 
 ### Modelo 1: Número de Médicos Ativos
 
-Este é um estudo observacional: a hipótese de pesquisa já especifica as variáveis explicativas primárias 
-(população total (x4), número de leitos hospitalares (x8) e renda total (x15)), além de sugerir que o 
-número de médicos ativos (x7) possa variar segundo a região geográfica (x16). Desta forma, não identificou-se
-a necessidade de redução do número de variáveis explicativas.
+A hipótese de pesquisa já especifica as variáveis explicativas primárias (população total (x4), 
+número de leitos hospitalares (x8) e renda total (x15)), além de sugerir que o número de médicos ativos (x7)
+possa variar segundo a região geográfica (x16). Desta forma, não identificou-se a necessidade de redução do 
+número de variáveis explicativas.
 
 #### Ajuste do Modelo Inicial
 
@@ -306,10 +312,17 @@ mean(vif(modelo1))
 O modelo é globalmente significativo (teste F, p < 0,001) e explica cerca de 93% da
 variabilidade do número de médicos ativos. Contudo, os fatores de inflação da variância
 (VIF) de população total e renda total são muito superiores a 10, indicando
-multicolinearidade entre essas duas variáveis. Como critério complementar, o VIF médio do
+multicolinearidade entre essas duas variáveis. Além disso, o VIF médio do
 modelo (`r round(mean(vif(modelo1)), 2)`) também é muito superior a 1, reforçando a evidência
 de multicolinearidade séria.
 
+Destacamos que o teste t indicou que as variáveis população total e renda total não são
+significativas individualmente e inclusive apresentam sinais contrários ao esperado (coeficientes negativos), 
+o que é também um indicativo de multicolinearidade. A variavel x4 (população total), por exemplo, apresentou sinal
+negativo, o que é incoerente com a hipótese de pesquisa, já que se espera que cidades maiores tenham mais médicos ativos.
+
+Em relação as variaveis dummys de região, verificou-se que individualmente elas não são significativas, mas com o 
+teste F parcial será possível avaliar se a região geográfica contribui de forma significativa para explicar o número de médicos ativos
 
 ```{r, echo=FALSE}
 
@@ -356,14 +369,14 @@ shapiro.test(residuals(modelo1))
 
 ```
 
-Os gráficos de resíduos sugerem heterocedasticidade (dispersão em forma de leque) e alguma
+Os gráficos de resíduos sugerem heterocedasticidade (dispersão em forma de leque) e 
 assimetria, o que é confirmado pelos testes de Breusch-Pagan e de Brown-Forsythe (ambos
 rejeitam a hipótese de homocedasticidade) e pelo teste de Shapiro-Wilk (rejeita a
 normalidade). Isso é coerente com a forte assimetria das variáveis de porte da cidade
 (população, leitos, renda) observada na análise descritiva, que combina a maioria das
 cidades pequenas/médias com poucas cidades muito grandes.
 
-#### A Inclusão da Região é Necessária?
+#### Avaliação de inclusão da região
 
 A hipótese de pesquisa suspeita que o número de médicos possa variar segundo a região. No entanto, 
 O teste F parcial não rejeita $H_0$ (p > 0,05), ou seja,  a região geográfica não contribui de forma
@@ -377,16 +390,21 @@ modelo1_sem_regiao <- lm(x7 ~ x4 + x8 + x15, data = dados_modelo)
 anova(modelo1_sem_regiao, modelo1)
 AIC(modelo1, modelo1_sem_regiao)
 
+data.frame(
+  Modelo       = c("Com região", "Sem região"),
+  R2_ajustado  = c(summary(modelo1)$adj.r.squared,
+                    summary(modelo1_sem_regiao)$adj.r.squared)
+)
+
 ```
 
-
-Sem a região, a multicolinearidade entre população total (x4) e renda total (x15) permanece
-alta (VIFs bem acima de 10) — algo intrínseco à própria hipótese de pesquisa, já que ambas as
-variáveis descrevem o porte da cidade —, mas isso não compromete o ajuste global do modelo
-(R² e teste F), apenas a interpretação isolada de cada coeficiente e a estabilidade de suas
-estimativas. O VIF médio (`r round(mean(vif(modelo1_final)), 2)`) confirma essa leitura,
-permanecendo bem acima de 1.
-
+O R² ajustado do modelo sem a região
+(`r round(summary(modelo1_sem_regiao)$adj.r.squared, 4)`) é
+`r ifelse(summary(modelo1_sem_regiao)$adj.r.squared >= summary(modelo1)$adj.r.squared, "maior ou igual", "menor")`
+ao do modelo com região
+(`r round(summary(modelo1)$adj.r.squared, 4)`), confirmando — junto com o teste F parcial e o
+AIC — que remover a região não piora (e ainda simplifica) o poder explicativo do modelo, já
+que o R² ajustado penaliza a inclusão de preditores que não agregam poder explicativo.
 
 ```{r, echo=FALSE}
 
@@ -396,4 +414,10 @@ vif(modelo1_final)
 mean(vif(modelo1_final))
 
 ```
+
+Sem a região, a multicolinearidade entre população total (x4) e renda total (x15) permanece
+alta (VIFs bem acima de 10), mas isso não compromete o ajuste global do modelo
+(R² e teste F), apenas a interpretação isolada de cada coeficiente e a estabilidade de suas
+estimativas. O VIF médio (`r round(mean(vif(modelo1_final)), 2)`) confirma essa leitura,
+permanecendo bem acima de 1.
 
