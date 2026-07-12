@@ -198,6 +198,22 @@ ggplot(dados_modelo, aes(x = x16, y = taxa_crimes, fill = x16)) +
 
 ```
 
+O primeiro painel de boxplots é possível verificar a assimetria identificada na tabela de
+medidas-resumo: população, médicos ativos, leitos hospitalares e renda total exibem caixas
+"empurradas" para a base da escala, com pontos isolados no topo (as cidades de maior porte
+da amostra), enquanto a taxa de crimes tem uma distribuição mais equilibrada, com menos
+pontos discrepantes. Já a renda per capita é a mais simétrica desse grupo, com a caixa
+relativamente centrada e poucos valores extremos, coerente com seu baixo CV na tabela
+anterior.
+
+Os boxplots por região sugerem diferenças de nível entre grupos (a mediana de médicos
+ativos na região Oeste, por exemplo, aparenta ser mais alta que nas demais regiões, e a
+mediana da taxa de crimes no Sul é a maior entre as quatro regiões), mas as caixas se
+sobrepõem consideravelmente e os grupos têm poucas observações (5 a 12 cidades), de modo que
+essa diferença aparente deve ser interpretada com cautela; os testes formais nos modelos de
+regressão (seção Resultados) são necessários para confirmar se a região tem, de fato, poder
+explicativo além do que já é capturado pelas demais variáveis.
+
 ### Histogramas
 
 ```{r, fig.width=10, fig.height=8}
@@ -219,6 +235,20 @@ ggplot(vars_hist, aes(x = valor)) +
   theme(strip.text = element_text(size = 8))
 
 ```
+
+Os histogramas reforçam o diagnóstico anterior sobre a forma das distribuições: população
+total, médicos ativos, leitos hospitalares e renda total mostram um formato fortemente
+assimétrico à direita, com a maior parte das cidades concentrada nas primeiras classes e uma
+cauda longa de poucas cidades muito grandes — o padrão clássico de variáveis de "porte"
+urbano. Em contraste, os percentuais de faixa etária (18-34 anos e 65+), de escolaridade
+(ensino médio e bacharelado), de pobreza e de desemprego, além da renda per capita,
+apresentam formato mais próximo do simétrico/unimodal, compatível com uma distribuição
+aproximadamente normal. A taxa de crimes por 100 mil habitantes fica em posição intermediária:
+é visivelmente assimétrica à direita, porém de forma bem mais moderada que as variáveis de
+porte, confirmando que a padronização por população (x9/x4) atenua, mas não elimina, a
+assimetria original do total de crimes (x9). Essa disparidade de formatos já antecipa a
+necessidade de investigar heterocedasticidade nos modelos que utilizam as variáveis de porte
+como preditoras (Modelo 1), o que é retomado na seção de diagnóstico a seguir.
 
 ### Gráfico de Correlação
 
@@ -245,3 +275,9 @@ corrplot(matriz_cor,
          mar     = c(0, 0, 2, 0))
 
 ```
+
+A matriz de correlação evidencia forte associação positiva entre população total, número de
+médicos, leitos hospitalares e renda total — variáveis que essencialmente medem o "porte"
+da cidade — e uma correlação positiva relevante entre a taxa de crimes e o percentual de
+pessoas abaixo da linha de pobreza. Esses padrões motivam a investigação de multicolinearidade
+nos modelos ajustados a seguir.
