@@ -402,9 +402,8 @@ O R² ajustado do modelo sem a região
 (`r round(summary(modelo1_sem_regiao)$adj.r.squared, 4)`) é
 `r ifelse(summary(modelo1_sem_regiao)$adj.r.squared >= summary(modelo1)$adj.r.squared, "maior ou igual", "menor")`
 ao do modelo com região
-(`r round(summary(modelo1)$adj.r.squared, 4)`), confirmando — junto com o teste F parcial e o
-AIC — que remover a região não piora (e ainda simplifica) o poder explicativo do modelo, já
-que o R² ajustado penaliza a inclusão de preditores que não agregam poder explicativo.
+(`r round(summary(modelo1)$adj.r.squared, 4)`), confirmando (junto com o teste F parcial e o
+AIC) que remover a região não piora e simplifica o poder explicativo do modelo.
 
 ```{r, echo=FALSE}
 
