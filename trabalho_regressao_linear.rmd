@@ -3,7 +3,7 @@ title: "trabalho_regressao_linear"
 output: github_document
 ---
 
-```{r, message=FALSE, warning=FALSE}
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
 
 library(ggplot2)
 library(tidyverse)
@@ -21,8 +21,6 @@ database$taxa_crimes <- database$x9 / database$x4 * 100000
 # Região como fator com rótulos
 database$x16 <- factor(database$x16, levels = 1:4,
                         labels = c("Nordeste", "Norte-Central", "Sul", "Oeste"))
-
-head(database)
 
 ```
 
@@ -80,7 +78,7 @@ Quadrático Médio de Predição ($MSPR$), comparado ao $MSE$ do modelo ajustado
 
 ## Amostragem
 
-```{r}
+```{r, echo=FALSE}
 
 set.seed(123)
 
@@ -96,7 +94,7 @@ cat("Observações para validação:  ", nrow(dados_validacao), "\n")
 
 ## Classificação das Variáveis
 
-```{r}
+```{r, echo=FALSE}
 
 classificacao <- data.frame(
   Código      = c("x3","x4","x5","x6","x7","x8","x9","x10","x11","x12","x13","x14","x15","x16","taxa_crimes"),
@@ -121,7 +119,7 @@ knitr::kable(classificacao, caption = "Classificação das variáveis do estudo"
 
 ### Medidas Resumo
 
-```{r}
+```{r, echo=FALSE}
 
 vars_num <- dados_modelo[, c("x3","x4","x5","x6","x7","x8","x9",
                               "x10","x11","x12","x13","x14","x15","taxa_crimes")]
@@ -165,7 +163,7 @@ normalização por população busca remover o efeito do tamanho da cidade.
 
 ### Distribuição por Região
 
-```{r}
+```{r, echo=FALSE}
 
 knitr::kable(
   table(dados_modelo$x16),
@@ -187,7 +185,7 @@ cautela nos modelos de regressão a seguir.
 
 ### Boxplots
 
-```{r, fig.width=10, fig.height=8}
+```{r, fig.width=10, fig.height=8, echo=FALSE}
 
 vars_box <- dados_modelo %>%
   select(x4, x7, x8, x14, x15, taxa_crimes) %>%
@@ -206,7 +204,7 @@ ggplot(vars_box, aes(x = variavel, y = valor)) +
 
 ```
 
-```{r, fig.width=8, fig.height=5}
+```{r, fig.width=8, fig.height=5, echo=FALSE}
 
 ggplot(dados_modelo, aes(x = x16, y = x7, fill = x16)) +
   geom_boxplot(alpha = 0.7) +
@@ -217,7 +215,7 @@ ggplot(dados_modelo, aes(x = x16, y = x7, fill = x16)) +
 
 ```
 
-```{r, fig.width=8, fig.height=5}
+```{r, fig.width=8, fig.height=5, echo=FALSE}
 
 ggplot(dados_modelo, aes(x = x16, y = taxa_crimes, fill = x16)) +
   geom_boxplot(alpha = 0.7) +
@@ -246,7 +244,7 @@ explicativo além do que já é capturado pelas demais variáveis.
 
 ### Histogramas
 
-```{r, fig.width=10, fig.height=8}
+```{r, fig.width=10, fig.height=8, echo=FALSE}
 
 vars_hist <- dados_modelo %>%
   select(x4, x5, x6, x7, x8, x10, x11, x12, x13, x14, x15, taxa_crimes) %>%
@@ -282,7 +280,7 @@ como preditoras (Modelo 1), o que é retomado na seção de diagnóstico a segui
 
 ### Gráfico de Correlação
 
-```{r, fig.width=9, fig.height=8}
+```{r, fig.width=9, fig.height=8, echo=FALSE}
 
 vars_cor <- dados_modelo %>%
   select(x4, x5, x6, x7, x8, x10, x11, x12, x13, x14, x15, taxa_crimes)
@@ -315,7 +313,7 @@ nos modelos ajustados a seguir.
 ## Construção do modelo de regressão numero de médicos ativos
 
 
-```{r}
+```{r, echo=FALSE}
 
 # Função auxiliar para o critério PRESS_p (usado na seleção e no refinamento dos modelos)
 PRESS <- function(modelo) sum((residuals(modelo) / (1 - hatvalues(modelo)))^2)
@@ -349,14 +347,14 @@ a necessidade de redução do número de variáveis explicativas.
 
 #### Ajuste do Modelo Inicial
 
-```{r}
+```{r, echo=FALSE}
 
 modelo1 <- lm(x7 ~ x4 + x8 + x15 + x16, data = dados_modelo)
 summary(modelo1)
 
 ```
 
-```{r}
+```{r, echo=FALSE}
 
 vif(modelo1)
 
@@ -369,7 +367,7 @@ multicolinearidade entre essas duas variáveis.
 
 #### Diagnóstico dos Resíduos
 
-```{r, fig.width=9, fig.height=7}
+```{r, fig.width=9, fig.height=7, echo=FALSE}
 
 par(mfrow = c(2, 2))
 plot(modelo1)
@@ -377,7 +375,7 @@ par(mfrow = c(1, 1))
 
 ```
 
-```{r}
+```{r, echo=FALSE}
 
 bptest(modelo1)
 brown_forsythe_test(modelo1)
@@ -409,7 +407,7 @@ A hipótese de pesquisa suspeita que o número de médicos possa variar segundo 
 teste F parcial permite avaliar se as três variáveis indicadoras de região agregam poder
 explicativo ao modelo já ajustado para população, leitos e renda:
 
-```{r}
+```{r, echo=FALSE}
 
 modelo1_sem_regiao <- lm(x7 ~ x4 + x8 + x15, data = dados_modelo)
 anova(modelo1_sem_regiao, modelo1)
@@ -424,7 +422,7 @@ portanto, como **modelo final** para os médicos ativos:
 
 $$\hat{Y}_{\text{médicos}} = \hat\beta_0 + \hat\beta_1 x_4 + \hat\beta_2 x_8 + \hat\beta_3 x_{15}$$
 
-```{r}
+```{r, echo=FALSE}
 
 modelo1_final <- modelo1_sem_regiao
 summary(modelo1_final)
