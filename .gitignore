@@ -2,6 +2,12 @@
 .Rhistory
 .RData
 *.Rproj
-_files/
-_cache/
+*_files/
+*_cache/
 *.html
+.quarto/
+.git - Copia*/
+ARegL_trabalho_1_2026.pdf
+teste_R.r
+trabalho_regressao_linear.R
+trabalho_regressao_linear.md
