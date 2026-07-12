@@ -26,6 +26,58 @@ head(database)
 
 ```
 
+Este trabalho tem por base um levantamento de características demográficas, econômicas e
+de saúde de 440 das cidades mais populosas dos Estados Unidos, referentes ao
+ano de 1990. Para cada cidade são conhecidas informações como área, população total,
+composição etária, número de médicos ativos e de leitos hospitalares, indicadores de
+escolaridade, renda, desemprego, pobreza, região geográfica e o total de crimes registrados.
+
+A partir desses dados, duas questões de pesquisa orientam a análise:
+
+1. O número de médicos ativos em uma cidade está relacionado com sua população total, o
+   número de leitos hospitalares e a renda total, podendo também variar segundo a região
+   geográfica?
+2. A violência, medida através da taxa de crimes por 100.000 habitantes, está associada a
+   características sócio-demográficas da cidade?
+
+## Objetivos
+
+- Descrever e classificar as variáveis envolvidas no estudo.
+- Realizar a análise descritiva completa das variáveis pesquisadas.
+- Ajustar um modelo de regressão linear múltipla para o número de médicos ativos em função
+  da população, do número de leitos hospitalares, da renda total e da região geográfica.
+- Selecionar, dentre um conjunto de variáveis sócio-demográficas, um modelo de regressão
+  parcimonioso para explicar a taxa de criminalidade.
+- Realizar o diagnóstico dos modelos ajustados (multicolinearidade, pontos discrepantes e
+  influentes, homocedasticidade e normalidade dos resíduos) e refiná-los quando necessário.
+- Validar os modelos finais com uma amostra de dados independente da utilizada na construção
+  dos modelos.
+
+Em todas as inferências, adotou-se o nível de significância de $\alpha = 0{,}05$.
+
+## Metodologia
+
+O conjunto de dados completo (440 cidades) foi dividido aleatoriamente em duas partes: uma
+**amostra de construção do modelo** (n = 30), utilizada para todo o processo de seleção,
+ajuste e diagnóstico dos modelos, e uma **amostra de validação** (n = 410, os casos
+remanescentes), reservada exclusivamente para avaliar a validade e o poder preditivo dos
+modelos finais (dados independentes dos usados na construção do modelo).
+
+O processo de construção dos modelos seguiu as etapas: (i) análise descritiva e preparação
+dos dados; (ii) para o modelo de taxa de criminalidade — um estudo observacional
+exploratório, com diversas variáveis candidatas — redução do número de variáveis
+explicativas por meio de regressão *stepwise* e de todas as regressões possíveis
+(*best subsets*), usando os critérios $R^2_{aj}$, $C_p$ de Mallows, $AIC$, $BIC$ e
+$PRESS_p$; para o modelo de médicos ativos — um estudo observacional confirmatório, cujas
+variáveis primárias já são conhecidas a priori — manutenção das variáveis da hipótese de
+pesquisa; (iii) refinamento do modelo selecionado, com diagnóstico de resíduos (testes de
+Breusch-Pagan e de Brown-Forsythe para homocedasticidade, teste de Shapiro-Wilk para
+normalidade), multicolinearidade (VIF) e observações discrepantes/influentes (resíduos
+studentizados, $h_{ii}$, DFFITS, Distância de Cook, DFBETAS); e (iv) validação do modelo
+final através da reestimação com os dados de validação — comparando coeficientes, SSE,
+$R^2$, $MSE$, $R^2_{aj}$, $C_p$, $AIC$ e $BIC$ entre as duas amostras — e do cálculo do Erro
+Quadrático Médio de Predição ($MSPR$), comparado ao $MSE$ do modelo ajustado.
+
 ## Amostragem
 
 ```{r}
