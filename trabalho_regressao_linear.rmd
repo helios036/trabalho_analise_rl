@@ -311,3 +311,129 @@ médicos, leitos hospitalares e renda total — variáveis que essencialmente me
 da cidade — e uma correlação positiva relevante entre a taxa de crimes e o percentual de
 pessoas abaixo da linha de pobreza. Esses padrões motivam a investigação de multicolinearidade
 nos modelos ajustados a seguir.
+
+## Construção do modelo de regressão numero de médicos ativos
+
+
+```{r}
+
+# Função auxiliar para o critério PRESS_p (usado na seleção e no refinamento dos modelos)
+PRESS <- function(modelo) sum((residuals(modelo) / (1 - hatvalues(modelo)))^2)
+
+# Teste de Brown-Forsythe (versão modificada do teste de Levene para homocedasticidade):
+# divide os resíduos em dois grupos, segundo a mediana dos valores ajustados, e compara
+# o desvio absoluto de cada resíduo em relação à mediana do seu grupo por um teste t.
+brown_forsythe_test <- function(modelo) {
+  e     <- residuals(modelo)
+  grupo <- factor(ifelse(fitted(modelo) <= median(fitted(modelo)), "Grupo 1", "Grupo 2"))
+  d     <- ave(e, grupo, FUN = function(x) abs(x - median(x)))
+  t.test(d ~ grupo, var.equal = TRUE)
+}
+
+# Critério Cp de Mallows para comparar um modelo com p parâmetros (SSEp) a um modelo
+# de referência com todas as variáveis candidatas (MSE_full)
+Cp_mallows <- function(modelo, mse_full, n) {
+  p   <- length(coef(modelo))
+  sse <- sum(residuals(modelo)^2)
+  sse / mse_full - (n - 2 * p)
+}
+
+```
+
+### Modelo 1: Número de Médicos Ativos
+
+Este é um estudo observacional: a hipótese de pesquisa já especifica as variáveis explicativas primárias 
+(população total (x4), número de leitos hospitalares (x8) e renda total (x15)), além de sugerir que o 
+número de médicos ativos (x7) possa variar segundo a região geográfica (x16). Desta forma, não identificou-se
+a necessidade de redução do número de variáveis explicativas.
+
+#### Ajuste do Modelo Inicial
+
+```{r}
+
+modelo1 <- lm(x7 ~ x4 + x8 + x15 + x16, data = dados_modelo)
+summary(modelo1)
+
+```
+
+```{r}
+
+vif(modelo1)
+
+```
+
+O modelo é globalmente significativo (teste F, p < 0,001) e explica cerca de 93% da
+variabilidade do número de médicos ativos. Contudo, os fatores de inflação da variância
+(VIF) de população total e renda total são muito superiores a 10, indicando
+multicolinearidade entre essas duas variáveis.
+
+#### Diagnóstico dos Resíduos
+
+```{r, fig.width=9, fig.height=7}
+
+par(mfrow = c(2, 2))
+plot(modelo1)
+par(mfrow = c(1, 1))
+
+```
+
+```{r}
+
+bptest(modelo1)
+brown_forsythe_test(modelo1)
+shapiro.test(residuals(modelo1))
+
+```
+
+Os gráficos de resíduos sugerem heterocedasticidade (dispersão em forma de leque) e alguma
+assimetria, o que é confirmado pelos testes de Breusch-Pagan e de Brown-Forsythe (ambos
+rejeitam a hipótese de homocedasticidade) e pelo teste de Shapiro-Wilk (rejeita a
+normalidade). Isso é coerente com a forte assimetria das variáveis de porte da cidade
+(população, leitos, renda) observada na análise descritiva, que combina a maioria das
+cidades pequenas/médias com poucas cidades muito grandes.
+
+Uma transformação logarítmica das variáveis quantitativas estabilizaria a variância dos
+resíduos, mas passaria a exigir que a interpretação dos coeficientes fosse feita em termos de
+elasticidades — o que se afasta da forma direta com que a hipótese de pesquisa foi enunciada
+("relacionado com sua população, número de leitos e renda total"). Optou-se, portanto, por
+**manter o modelo na escala original** e reportar a heterocedasticidade encontrada como uma
+**limitação assumida** da análise: os coeficientes estimados permanecem os melhores
+estimadores não viesados (Gauss-Markov não exige homocedasticidade para isso), mas seus
+erros-padrão, testes t e intervalos de confiança devem ser interpretados com cautela, pois a
+inferência clássica pressupõe variância constante dos erros. Essa limitação é retomada na
+Conclusão.
+
+#### A Inclusão da Região é Necessária?
+
+A hipótese de pesquisa suspeita que o número de médicos possa variar segundo a região. Um
+teste F parcial permite avaliar se as três variáveis indicadoras de região agregam poder
+explicativo ao modelo já ajustado para população, leitos e renda:
+
+```{r}
+
+modelo1_sem_regiao <- lm(x7 ~ x4 + x8 + x15, data = dados_modelo)
+anova(modelo1_sem_regiao, modelo1)
+AIC(modelo1, modelo1_sem_regiao)
+
+```
+
+O teste F parcial não rejeita $H_0$ (p > 0,05): a região geográfica não contribui de forma
+significativa para explicar o número de médicos ativos depois de controlado o efeito de
+população, leitos hospitalares e renda total, e sua remoção reduz o AIC do modelo. Adota-se,
+portanto, como **modelo final** para os médicos ativos:
+
+$$\hat{Y}_{\text{médicos}} = \hat\beta_0 + \hat\beta_1 x_4 + \hat\beta_2 x_8 + \hat\beta_3 x_{15}$$
+
+```{r}
+
+modelo1_final <- modelo1_sem_regiao
+summary(modelo1_final)
+vif(modelo1_final)
+
+```
+
+Sem a região, a multicolinearidade entre população total (x4) e renda total (x15) permanece
+alta (VIFs bem acima de 10) — algo intrínseco à própria hipótese de pesquisa, já que ambas as
+variáveis descrevem o porte da cidade —, mas isso não compromete o ajuste global do modelo
+(R² e teste F), apenas a interpretação isolada de cada coeficiente e a estabilidade de suas
+estimativas.
