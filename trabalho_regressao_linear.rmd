@@ -42,12 +42,10 @@ A partir desses dados, duas questões de pesquisa orientam a análise:
 
 - Descrever e classificar as variáveis envolvidas no estudo.
 - Realizar a análise descritiva completa das variáveis pesquisadas.
-- Ajustar um modelo de regressão linear múltipla para o número de médicos ativos em função
+- construir um modelo de regressão linear múltipla para o número de médicos ativos em função
   da população, do número de leitos hospitalares, da renda total e da região geográfica.
-- Selecionar, dentre um conjunto de variáveis sócio-demográficas, um modelo de regressão
-  parcimonioso para explicar a taxa de criminalidade.
-- Realizar o diagnóstico dos modelos ajustados (multicolinearidade, pontos discrepantes e
-  influentes, homocedasticidade e normalidade dos resíduos) e refiná-los quando necessário.
+- Desenvolver um modelo de regressão linear multipla para explicar a taxa de criminalidade 
+considerando as variaveis socioeconomicas
 - Validar os modelos finais com uma amostra de dados independente da utilizada na construção
   dos modelos.
 
@@ -58,21 +56,19 @@ Em todas as inferências, adotou-se o nível de significância de $\alpha = 0{,}
 O conjunto de dados completo (440 cidades) foi dividido aleatoriamente em duas partes: uma
 **amostra de construção do modelo** (n = 30), utilizada para todo o processo de seleção,
 ajuste e diagnóstico dos modelos, e uma **amostra de validação** (n = 410, os casos
-remanescentes), reservada exclusivamente para avaliar a validade e o poder preditivo dos
-modelos finais (dados independentes dos usados na construção do modelo).
+remanescentes), reservada para avaliar a validade e o poder preditivo dos modelos finais.
 
-O processo de construção dos modelos seguiu as etapas: (i) análise descritiva e preparação
-dos dados; (ii) para o modelo de taxa de criminalidade — um estudo observacional
-exploratório, com diversas variáveis candidatas — redução do número de variáveis
-explicativas por meio de regressão *stepwise* e de todas as regressões possíveis
-(*best subsets*), usando os critérios $R^2_{aj}$, $C_p$ de Mallows, $AIC$, $BIC$ e
-$PRESS_p$; para o modelo de médicos ativos — um estudo observacional confirmatório, cujas
-variáveis primárias já são conhecidas a priori — manutenção das variáveis da hipótese de
-pesquisa; (iii) refinamento do modelo selecionado, com diagnóstico de resíduos (testes de
-Breusch-Pagan e de Brown-Forsythe para homocedasticidade, teste de Shapiro-Wilk para
-normalidade), multicolinearidade (VIF) e observações discrepantes/influentes (resíduos
-studentizados, $h_{ii}$, DFFITS, Distância de Cook, DFBETAS); e (iv) validação do modelo
-final através da reestimação com os dados de validação — comparando coeficientes, SSE,
+O processo de construção dos modelos seguiu as etapas: 
+(i) análise descritiva e preparação dos dados;
+(ii) Para o modelo de médicos ativos — será um estudo observacional confirmatório para avaliar se
+número de médicos ativos em uma cidade esteja relacionado com a sua população total, o número de leitos 
+hospitalares e a renda total.
+(ii) Em relação ao modelo de estimação da taxa de criminalidade — será um estudo exploratório para 
+avaliar se a taxa de criminalidade em uma cidade esteja relacionada com as variáveis socioeconômicas da cidade.
+(iii) refinamento do modelo selecionado, com diagnóstico de resíduos (testes para avaliar a homocedasticidade,
+teste de Shapiro-Wilk para paranormalidade), multicolinearidade (VIF) e observações discrepantes/influentes (resíduos
+studentizados, $h_{ii}$, DFFITS, Distância de Cook, DFBETAS); e 
+(iv) validação do modelo final através da reestimação com os dados de validação — comparando coeficientes, SSE,
 $R^2$, $MSE$, $R^2_{aj}$, $C_p$, $AIC$ e $BIC$ entre as duas amostras — e do cálculo do Erro
 Quadrático Médio de Predição ($MSPR$), comparado ao $MSE$ do modelo ajustado.
 
@@ -103,13 +99,7 @@ classificacao <- data.frame(
                   "Total de crimes","% ensino médio completo","% bacharéis",
                   "% abaixo da pobreza","% desempregados","Renda per capita",
                   "Renda total (mi USD)","Região geográfica","Taxa de crimes/100k hab."),
-  Tipo        = c("Quantitativa","Quantitativa","Quantitativa","Quantitativa",
-                  "Quantitativa","Quantitativa","Quantitativa","Quantitativa",
-                  "Quantitativa","Quantitativa","Quantitativa","Quantitativa",
-                  "Quantitativa","Qualitativa","Quantitativa"),
-  Escala      = c("Razão","Razão","Razão","Razão","Razão","Razão","Razão",
-                  "Razão","Razão","Razão","Razão","Razão","Razão","Nominal","Razão")
-)
+  Tipo        = c("Quantitativa Discreta","Quantitativa Discreta","Quantitativa Contínua","Quantitativa Contínua", "Quantitativa Discreta","Quantitativa Discreta","Quantitativa Discreta","Quantitativa Contínua", "Quantitativa Contínua","Quantitativa Contínua","Quantitativa Contínua","Quantitativa Contínua", "Quantitativa","Qualitativa","Quantitativa Contínua"))
 
 knitr::kable(classificacao, caption = "Classificação das variáveis do estudo")
 
@@ -141,25 +131,13 @@ knitr::kable(resumo, row.names = FALSE,
 
 ```
 
-As variáveis de "porte" da cidade — população total (x4), médicos ativos (x7), leitos
-hospitalares (x8), total de crimes (x9) e renda total (x15) — apresentam média
-consideravelmente maior que a mediana (razão média/mediana entre
-`r round(min(resumo$Media_sobre_Mediana[resumo$Variável %in% c("x4","x7","x8","x9","x15")]),2)`
-e
-`r round(max(resumo$Media_sobre_Mediana[resumo$Variável %in% c("x4","x7","x8","x9","x15")]),2)`)
-e coeficiente de variação acima de 100%, evidenciando forte assimetria à direita: a amostra
-combina a maioria das cidades de porte pequeno/médio com poucas cidades muito grandes (como
-Maricopa-AZ e San Bernardino-CA), que puxam a média para cima. Já as variáveis expressas em
-proporção ou em valores per capita — percentual entre 18 e 34 anos (x5), percentual com
-ensino médio completo (x10), percentual de bacharéis (x11), percentual abaixo da pobreza
-(x12) e renda per capita (x14) — têm média e mediana muito próximas e CV bem mais baixo (na
-faixa de `r round(min(resumo$CV_pct[resumo$Variável %in% c("x5","x10","x11","x14")]),1)`% a
-`r round(max(resumo$CV_pct[resumo$Variável %in% c("x5","x10","x11","x14")]),1)`%), pois não
-dependem diretamente do tamanho da cidade e tendem a variar dentro de uma faixa mais estreita
-entre cidades norte-americanas. A taxa de crimes por 100 mil habitantes ocupa uma posição
-intermediária (CV ≈ 40%, razão média/mediana ≈ 1,1): mais dispersa que as proporções
-sócio-demográficas, porém sem a assimetria extrema das variáveis de porte, já que a própria
-normalização por população busca remover o efeito do tamanho da cidade.
+As variáveis de "porte" da cidade, população total (x4), médicos ativos (x7), leitos
+hospitalares (x8), total de crimes (x9) e renda total (x15) coeficiente de variação acima de 100%, evidenciando forte assimetria à direita.
+Já as variáveis expressas em proporção ou em valores per capita, percentual entre 18 e 34 anos (x5),
+percentual com ensino médio completo (x10), percentual de bacharéis (x11), percentual abaixo da pobreza (x12) e renda per capita (x14) — 
+têm média e mediana muito próximas e CV bem mais baixo (na faixa de `r round(min(resumo$CV_pct[resumo$Variável %in% c("x5","x10","x11","x14")]),1)`% a`r round(max(resumo$CV_pct[resumo$Variável %in% c("x5","x10","x11","x14")]),1)`%).
+A taxa de crimes por 100 mil habitantes ocupa uma posição intermediária (CV ≈ 40%): mais dispersa que as proporções sócio-demográficas, 
+porém sem a assimetria extrema das variáveis de porte, já que a própria normalização por população busca remover o efeito do tamanho da cidade.
 
 ### Distribuição por Região
 
@@ -176,12 +154,7 @@ knitr::kable(
 A amostra de 30 cidades não fica igualmente distribuída entre as quatro regiões: a região Sul
 concentra `r freq_regiao["Sul"]` cidades (`r round(prop.table(freq_regiao)["Sul"]*100,1)`% da
 amostra), enquanto a Norte-Central aparece com apenas `r freq_regiao["Norte-Central"]`
-cidades (`r round(prop.table(freq_regiao)["Norte-Central"]*100,1)`%). Esse desbalanceamento é
-possível uma amostra aleatória simples de tamanho reduzido (n = 30) extraída de uma
-população com composição regional desigual, mas implica que os grupos regionais menores (5 a
-7 cidades) ficam com pouca informação para sustentar comparações estatísticas robustas —
-outro motivo, além da falta de significância nos testes formais, para tratar a região com
-cautela nos modelos de regressão a seguir.
+cidades (`r round(prop.table(freq_regiao)["Norte-Central"]*100,1)`%).
 
 ### Boxplots
 
@@ -238,9 +211,9 @@ Os boxplots por região sugerem diferenças de nível entre grupos (a mediana de
 ativos na região Oeste, por exemplo, aparenta ser mais alta que nas demais regiões, e a
 mediana da taxa de crimes no Sul é a maior entre as quatro regiões), mas as caixas se
 sobrepõem consideravelmente e os grupos têm poucas observações (5 a 12 cidades), de modo que
-essa diferença aparente deve ser interpretada com cautela; os testes formais nos modelos de
-regressão (seção Resultados) são necessários para confirmar se a região tem, de fato, poder
-explicativo além do que já é capturado pelas demais variáveis.
+essa diferença aparente deve ser melhor avaliada nos testes formais nos modelos de
+regressão e são necessários para confirmar se a região tem, de fato, poder explicativo além 
+do que já é capturado pelas demais variáveis.
 
 ### Histogramas
 
@@ -267,11 +240,8 @@ ggplot(vars_hist, aes(x = valor)) +
 Os histogramas reforçam o diagnóstico anterior sobre a forma das distribuições: população
 total, médicos ativos, leitos hospitalares e renda total mostram um formato fortemente
 assimétrico à direita, com a maior parte das cidades concentrada nas primeiras classes e uma
-cauda longa de poucas cidades muito grandes — o padrão clássico de variáveis de "porte"
-urbano. Em contraste, os percentuais de faixa etária (18-34 anos e 65+), de escolaridade
-(ensino médio e bacharelado), de pobreza e de desemprego, além da renda per capita,
-apresentam formato mais próximo do simétrico/unimodal, compatível com uma distribuição
-aproximadamente normal. A taxa de crimes por 100 mil habitantes fica em posição intermediária:
+cauda longa de poucas cidades muito grandes. No entanto, os percentuais de faixa etária (18-34 anos e 65+), de escolaridade (ensino médio e bacharelado), de pobreza e de desemprego, além da renda per capita, apresentam formato mais próximo do simétrico, coerente com uma distribuição
+normal. A taxa de crimes por 100 mil habitantes fica em posição intermediária:
 é visivelmente assimétrica à direita, porém de forma bem mais moderada que as variáveis de
 porte, confirmando que a padronização por população (x9/x4) atenua, mas não elimina, a
 assimetria original do total de crimes (x9). Essa disparidade de formatos já antecipa a
@@ -310,10 +280,40 @@ da cidade — e uma correlação positiva relevante entre a taxa de crimes e o p
 pessoas abaixo da linha de pobreza. Esses padrões motivam a investigação de multicolinearidade
 nos modelos ajustados a seguir.
 
-## Construção do modelo de regressão numero de médicos ativos
+### Modelo 1: Número de Médicos Ativos
+
+Este é um estudo observacional: a hipótese de pesquisa já especifica as variáveis explicativas primárias 
+(população total (x4), número de leitos hospitalares (x8) e renda total (x15)), além de sugerir que o 
+número de médicos ativos (x7) possa variar segundo a região geográfica (x16). Desta forma, não identificou-se
+a necessidade de redução do número de variáveis explicativas.
+
+#### Ajuste do Modelo Inicial
+
+```{r, echo=FALSE}
+
+modelo1 <- lm(x7 ~ x4 + x8 + x15 + x16, data = dados_modelo)
+summary(modelo1)
+
+```
+
+```{r, echo=FALSE}
+
+vif(modelo1)
+mean(vif(modelo1))
+
+```
+
+O modelo é globalmente significativo (teste F, p < 0,001) e explica cerca de 93% da
+variabilidade do número de médicos ativos. Contudo, os fatores de inflação da variância
+(VIF) de população total e renda total são muito superiores a 10, indicando
+multicolinearidade entre essas duas variáveis. Como critério complementar, o VIF médio do
+modelo (`r round(mean(vif(modelo1)), 2)`) também é muito superior a 1, reforçando a evidência
+de multicolinearidade séria.
 
 
 ```{r, echo=FALSE}
+
+### Funções auxiliares: Homoscedasticidade e normalidade
 
 # Função auxiliar para o critério PRESS_p (usado na seleção e no refinamento dos modelos)
 PRESS <- function(modelo) sum((residuals(modelo) / (1 - hatvalues(modelo)))^2)
@@ -337,33 +337,6 @@ Cp_mallows <- function(modelo, mse_full, n) {
 }
 
 ```
-
-### Modelo 1: Número de Médicos Ativos
-
-Este é um estudo observacional: a hipótese de pesquisa já especifica as variáveis explicativas primárias 
-(população total (x4), número de leitos hospitalares (x8) e renda total (x15)), além de sugerir que o 
-número de médicos ativos (x7) possa variar segundo a região geográfica (x16). Desta forma, não identificou-se
-a necessidade de redução do número de variáveis explicativas.
-
-#### Ajuste do Modelo Inicial
-
-```{r, echo=FALSE}
-
-modelo1 <- lm(x7 ~ x4 + x8 + x15 + x16, data = dados_modelo)
-summary(modelo1)
-
-```
-
-```{r, echo=FALSE}
-
-vif(modelo1)
-
-```
-
-O modelo é globalmente significativo (teste F, p < 0,001) e explica cerca de 93% da
-variabilidade do número de médicos ativos. Contudo, os fatores de inflação da variância
-(VIF) de população total e renda total são muito superiores a 10, indicando
-multicolinearidade entre essas duas variáveis.
 
 #### Diagnóstico dos Resíduos
 
@@ -390,22 +363,13 @@ normalidade). Isso é coerente com a forte assimetria das variáveis de porte da
 (população, leitos, renda) observada na análise descritiva, que combina a maioria das
 cidades pequenas/médias com poucas cidades muito grandes.
 
-Uma transformação logarítmica das variáveis quantitativas estabilizaria a variância dos
-resíduos, mas passaria a exigir que a interpretação dos coeficientes fosse feita em termos de
-elasticidades — o que se afasta da forma direta com que a hipótese de pesquisa foi enunciada
-("relacionado com sua população, número de leitos e renda total"). Optou-se, portanto, por
-**manter o modelo na escala original** e reportar a heterocedasticidade encontrada como uma
-**limitação assumida** da análise: os coeficientes estimados permanecem os melhores
-estimadores não viesados (Gauss-Markov não exige homocedasticidade para isso), mas seus
-erros-padrão, testes t e intervalos de confiança devem ser interpretados com cautela, pois a
-inferência clássica pressupõe variância constante dos erros. Essa limitação é retomada na
-Conclusão.
-
 #### A Inclusão da Região é Necessária?
 
-A hipótese de pesquisa suspeita que o número de médicos possa variar segundo a região. Um
-teste F parcial permite avaliar se as três variáveis indicadoras de região agregam poder
-explicativo ao modelo já ajustado para população, leitos e renda:
+A hipótese de pesquisa suspeita que o número de médicos possa variar segundo a região. No entanto, 
+O teste F parcial não rejeita $H_0$ (p > 0,05), ou seja,  a região geográfica não contribui de forma
+significativa para explicar o número de médicos ativos depois de controlado o efeito de
+população, leitos hospitalares e renda total, e sua remoção reduz o AIC do modelo, conforme pode ser 
+verificado abaixo:
 
 ```{r, echo=FALSE}
 
@@ -415,23 +379,21 @@ AIC(modelo1, modelo1_sem_regiao)
 
 ```
 
-O teste F parcial não rejeita $H_0$ (p > 0,05): a região geográfica não contribui de forma
-significativa para explicar o número de médicos ativos depois de controlado o efeito de
-população, leitos hospitalares e renda total, e sua remoção reduz o AIC do modelo. Adota-se,
-portanto, como **modelo final** para os médicos ativos:
 
-$$\hat{Y}_{\text{médicos}} = \hat\beta_0 + \hat\beta_1 x_4 + \hat\beta_2 x_8 + \hat\beta_3 x_{15}$$
+Sem a região, a multicolinearidade entre população total (x4) e renda total (x15) permanece
+alta (VIFs bem acima de 10) — algo intrínseco à própria hipótese de pesquisa, já que ambas as
+variáveis descrevem o porte da cidade —, mas isso não compromete o ajuste global do modelo
+(R² e teste F), apenas a interpretação isolada de cada coeficiente e a estabilidade de suas
+estimativas. O VIF médio (`r round(mean(vif(modelo1_final)), 2)`) confirma essa leitura,
+permanecendo bem acima de 1.
+
 
 ```{r, echo=FALSE}
 
 modelo1_final <- modelo1_sem_regiao
 summary(modelo1_final)
 vif(modelo1_final)
+mean(vif(modelo1_final))
 
 ```
 
-Sem a região, a multicolinearidade entre população total (x4) e renda total (x15) permanece
-alta (VIFs bem acima de 10) — algo intrínseco à própria hipótese de pesquisa, já que ambas as
-variáveis descrevem o porte da cidade —, mas isso não compromete o ajuste global do modelo
-(R² e teste F), apenas a interpretação isolada de cada coeficiente e a estabilidade de suas
-estimativas.
