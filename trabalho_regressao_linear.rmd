@@ -143,6 +143,26 @@ knitr::kable(resumo, row.names = FALSE,
 
 ```
 
+As variáveis de "porte" da cidade — população total (x4), médicos ativos (x7), leitos
+hospitalares (x8), total de crimes (x9) e renda total (x15) — apresentam média
+consideravelmente maior que a mediana (razão média/mediana entre
+`r round(min(resumo$Media_sobre_Mediana[resumo$Variável %in% c("x4","x7","x8","x9","x15")]),2)`
+e
+`r round(max(resumo$Media_sobre_Mediana[resumo$Variável %in% c("x4","x7","x8","x9","x15")]),2)`)
+e coeficiente de variação acima de 100%, evidenciando forte assimetria à direita: a amostra
+combina a maioria das cidades de porte pequeno/médio com poucas cidades muito grandes (como
+Maricopa-AZ e San Bernardino-CA), que puxam a média para cima. Já as variáveis expressas em
+proporção ou em valores per capita — percentual entre 18 e 34 anos (x5), percentual com
+ensino médio completo (x10), percentual de bacharéis (x11), percentual abaixo da pobreza
+(x12) e renda per capita (x14) — têm média e mediana muito próximas e CV bem mais baixo (na
+faixa de `r round(min(resumo$CV_pct[resumo$Variável %in% c("x5","x10","x11","x14")]),1)`% a
+`r round(max(resumo$CV_pct[resumo$Variável %in% c("x5","x10","x11","x14")]),1)`%), pois não
+dependem diretamente do tamanho da cidade e tendem a variar dentro de uma faixa mais estreita
+entre cidades norte-americanas. A taxa de crimes por 100 mil habitantes ocupa uma posição
+intermediária (CV ≈ 40%, razão média/mediana ≈ 1,1): mais dispersa que as proporções
+sócio-demográficas, porém sem a assimetria extrema das variáveis de porte, já que a própria
+normalização por população busca remover o efeito do tamanho da cidade.
+
 ### Distribuição por Região
 
 ```{r}
@@ -154,6 +174,16 @@ knitr::kable(
 )
 
 ```
+
+A amostra de 30 cidades não fica igualmente distribuída entre as quatro regiões: a região Sul
+concentra `r freq_regiao["Sul"]` cidades (`r round(prop.table(freq_regiao)["Sul"]*100,1)`% da
+amostra), enquanto a Norte-Central aparece com apenas `r freq_regiao["Norte-Central"]`
+cidades (`r round(prop.table(freq_regiao)["Norte-Central"]*100,1)`%). Esse desbalanceamento é
+possível uma amostra aleatória simples de tamanho reduzido (n = 30) extraída de uma
+população com composição regional desigual, mas implica que os grupos regionais menores (5 a
+7 cidades) ficam com pouca informação para sustentar comparações estatísticas robustas —
+outro motivo, além da falta de significância nos testes formais, para tratar a região com
+cautela nos modelos de regressão a seguir.
 
 ### Boxplots
 
