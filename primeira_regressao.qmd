@@ -1,8 +1,17 @@
 ---
-title: "trabalho_regressao_linear(Primeira Regressão)"
+title: "Trabalho de Regressão Linear: Primeira Regressão"
 format: html
 ---
 
+## Resumo do Processo
+
+Este documento detalha o método completo para a construção da primeira regressão linear. O fluxo de trabalho implementado inclui as seguintes etapas analíticas:
+
+1.  **Modelagem Completa**: Ajuste inicial do modelo de regressão linear utilizando todas as variáveis disponíveis.
+2.  **Transformação Box-Cox**: Aplicação de análise de transformação para identificar o parâmetro lambda ideal, visando a estabilização da variância e a normalização dos resíduos.
+3.  **Seleção de Variáveis (Método Backward)**: Implementação do procedimento de eliminação retroativa (*Backward Stepwise Selection*), visando a seleção do modelo mais parcimonioso com base no critério de informação de Akaike (AIC).
+
+O objetivo desta análise é otimizar o ajuste dos modelos, garantindo robustez estatística e a seleção adequada dos preditores.
 
 ```{r, message=FALSE, warning=FALSE}
 
@@ -12,6 +21,7 @@ library(openxlsx)
 library(readxl)
 library(corrplot)
 library(leaps) # Usado no método BACKWARD
+library(MASS)
 
 #setwd("C:/Users/Helio/OneDrive/Documents/Analise_regressao_linear/trabalho")
 
@@ -61,12 +71,77 @@ df_clean1 <- subset(df_clean, select = c(x7, x4, x8, x15, x16, taxa_leitos))
 df_clean2 <- subset(df_clean, select = c(taxa_crimes, x3, x5, x6, x10, x11, x12, x13, x14, x15, x16))
 
 ```
+# Modelo Completo
+
+```{r, fig.width=10, fig.height=8}
+
+# Removendo possíveis valores nulos
+df_clean <- na.omit(database)
+
+# Criando um dataframe para as análises
+
+# PRIMEIRA HIPÓTESE - modelo
+modelo_completo1 = lm(x7~ x4 + x8 + x15 + x16 + taxa_leitos, data= df_clean1)
+
+# SEGUNDA HIPÓTESE - modelo
+modelo_completo2 <- lm(taxa_crimes ~ x3 + x5 + x6 + x10 + x11 + x12 + x13+ x14 + x15 + x16, data= df_clean2)
+
+```
+
+# Box-Cox
+- Verificando se a variável resposta necessita de alguma transformação
+
+```{r, fig.width=10, fig.height=8}
+
+# primeira hipótese
+bc1 <- boxcox(modelo_completo1, lambda =  seq(-2,2,0.1))
+
+# segunda hipótese
+bc2 <- boxcox(modelo_completo2, lambda =  seq(-2,2,0.1))
+
+
+lambda_otimo1 <- bc1$x[which.max(bc1$y)]
+lambda_otimo2 <- bc2$x[which.max(bc2$y)]
+
+# Resultado da transformação Box-Cox
+interpretar_lambda <- function(lambda_otimo, nome_modelo){
+  
+  cat("\n", nome_modelo, "\n")
+  cat("Lambda ótimo =", round(lambda_otimo, 4), "\n")
+  
+  if(lambda_otimo >= 0.75 && lambda_otimo <= 1.25){
+    print("Lambda próximo de 1: manter Y original")
+    
+  } else if(lambda_otimo >= -0.25 && lambda_otimo <= 0.25){
+    print("Lambda próximo de 0: aplicar log(Y)")
+    
+  } else if(lambda_otimo >= 0.25 && lambda_otimo <= 0.75){
+    print("Lambda próximo de 0.5: aplicar sqrt(Y)")
+    
+  } else if(lambda_otimo >= -1.25 && lambda_otimo <= -0.75){
+    print("Lambda próximo de -1: aplicar 1/Y")
+    
+  } else {
+    print(paste("Aplicar transformação Box-Cox com lambda =", 
+                round(lambda_otimo, 4)))
+  }
+}
+
+
+interpretar_lambda(lambda_otimo1, "Modelo 1")
+interpretar_lambda(lambda_otimo2, "Modelo 2")
+
+# Aplicando a transformação 
+df_clean2$taxa_crimes_sqrt <- sqrt(df_clean2$taxa_crimes)
+
+# Excluindo a antiga coluna 
+df_clean2$taxa_crimes <- NULL
+
+```
 
 
 # Seleção das Variáveis
-
-
-
+- Utilizando o **método BACKWARD** para escolha do número de variáveis e variáveis
 ````{r, fig.width=10, fig.height=8}
 
 # PRIMEIRA HIPÓTESE
@@ -105,7 +180,7 @@ grid(nx = NULL, ny = NULL, col = "lightgray", lty = "dotted")
 
 
 # Seleção Automática de Variáveis
-all_models2 <- regsubsets(taxa_crimes ~ ., data= df_clean2, nvmax= ncol(df_clean2) -1, method = "exhaustive", really.big = TRUE)
+all_models2 <- regsubsets(taxa_crimes_sqrt ~ ., data= df_clean2, nvmax= ncol(df_clean2) -1, method = "exhaustive", really.big = TRUE)
 
 # Resumo dos Resultados
 resumo2 <- summary(all_models2)

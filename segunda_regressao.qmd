@@ -1,0 +1,181 @@
+---
+title: "Segunda Regressão - Transformações & Presupostos"
+format: html
+---
+
+## Resumo do Processo
+
+Este documento detalha a análise das regressões lineares desenvolvidas.
+
+1. **Criação do modelo**: Ajuste inicial do modelo de regressão linear utilizando o método de seleção de variáveis **BACKWARD**.
+
+2. **Análise dos pressupostos**: Avaliação dos principais pressupostos da regressão linear, incluindo:
+   - Linearidade;
+   - Normalidade dos resíduos;
+   - Homocedasticidade;
+   - Ausência de multicolinearidade;
+   - Identificação de observações influentes e pontos de alavancagem.
+
+3. **Validação do modelo final**: Verificação da adequação do modelo selecionado e interpretação dos resultados obtidos.
+
+
+```{r, message=FALSE, warning=FALSE}
+
+library(ggplot2)
+library(tidyverse)
+library(openxlsx)
+library(readxl)
+library(corrplot)
+library(leaps) # Usado no método BACKWARD
+library(car)
+library(lmtest)
+
+
+
+#setwd("C:/Users/Helio/OneDrive/Documents/Analise_regressao_linear/trabalho")
+
+database <- read.xlsx("dados_amostra.xlsx")
+
+# Criar taxa de crimes por 100.000 habitantes
+database$taxa_crimes <- database$x9 / database$x4 * 100000
+
+# Criando a taxa de médicos por 100.00 habitantes
+database$taxa_medicos <- database$x7 / database$x4 * 100000
+
+# Criando a taxa de leitos por 100.00 habitantes
+database$taxa_leitos <- database$x8 / database$x4 * 100000
+
+
+head(database)
+
+```
+
+# Criando os DataFrames de acordo com o melhor modelo BACKWARD
+
+
+
+```{r, fig.width=10, fig.height=8}
+
+# Removendo possíveis valores nulos
+df_clean <- na.omit(database)
+
+# Criando um dataframe para as análises
+
+# PRIMEIRA HIPÓTESE
+df_clean1 <- subset(df_clean, select = c(x7, x4, x8, x15))
+
+# SEGUNDA HIPÓTESE
+df_clean2 <- subset(df_clean, select = c(taxa_crimes, x5, x12, x14, x16))
+
+# Trasnformando a variável Y
+df_clean2$taxa_crimes_sqrt <- sqrt(df_clean2$taxa_crimes)
+df_clean2$taxa_crimes <- NULL
+
+```
+
+# **Hipótese 1**
+- Análise dos modelos & Presupostos
+
+```{r, fig.width=10, fig.height=8}
+
+# Modelo
+modelo1 <- lm(x7 ~ x4 + x8 + x15, data= df_clean1)
+
+diagnostico_modelo <- function(modelo){
+  
+  # ============================================================
+  # 1) Resumo geral do modelo
+  # ============================================================
+  # Apresenta:
+  # - Coeficientes estimados
+  # - Erros padrões
+  # - Teste t dos parâmetros
+  # - R² e R² ajustado
+  # - Teste F global do modelo
+  
+  print(summary(modelo))
+  
+  
+  # ============================================================
+  # 2) Diagnóstico gráfico dos resíduos
+  # ============================================================
+  
+  par(mfrow = c(2,2))
+  
+  # Gráfico 1:
+  # Resíduos vs Valores Ajustados
+  # Verifica:
+  # - Linearidade
+  # - Homocedasticidade
+  # Esperado: dispersão aleatória dos pontos
+  plot(modelo, which = 1)
+  
+  
+  # Gráfico 2:
+  # Gráfico Q-Q dos resíduos
+  # Verifica:
+  # - Normalidade dos resíduos
+  # Esperado: pontos próximos da linha reta
+  plot(modelo, which = 2)
+  
+  
+  # Gráfico 3:
+  # Escala-location
+  # Verifica novamente a homogeneidade da variância
+  plot(modelo, which = 3)
+  
+  
+  # Gráfico 4:
+  # Distância de Cook
+  # Identifica observações influentes
+  # Regra comum:
+  # valores maiores que 4/n podem indicar influência
+  plot(modelo, which = 4)
+  
+  
+  # ============================================================
+  # 3) Teste de heterocedasticidade
+  # ============================================================
+  # H0: Variância dos resíduos é constante (homocedasticidade)
+  # H1: Variância dos resíduos não é constante
+  
+  print('Teste de heterocedasticidade:')
+  print(
+    bptest(modelo)
+  )
+  
+  
+  # ============================================================
+  # 4) Multicolinearidade
+  # ============================================================
+  # Mede a correlação entre as variáveis explicativas.
+  #
+  # Interpretação:
+  # VIF < 5  -> aceitável
+  # VIF 5-10 -> atenção
+  # VIF > 10 -> problema de multicolinearidade
+  print('Multicolinearidade:')
+  print(
+    vif(modelo)
+  )
+  
+}
+
+# Executar diagnóstico do modelo 1
+diagnostico_modelo(modelo1)
+```
+
+# **Hipótese 2**
+- Análise dos modelos & Presupostos
+
+```{r, fig.width=10, fig.height=8}
+
+# Modelo 2 
+modelo2 <- lm(taxa_crimes_sqrt ~ x5 + x12 + x14 + x16, data= df_clean2)
+
+
+# Executar diagnóstico do modelo 2
+diagnostico_modelo(modelo2)
+```
+
+
