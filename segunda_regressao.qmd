@@ -7,16 +7,18 @@ format: html
 
 Este documento detalha a análise das regressões lineares desenvolvidas.
 
-1. **Criação do modelo**: Ajuste inicial do modelo de regressão linear utilizando o método de seleção de variáveis **BACKWARD**.
+1. **Relação entre médicos ativos e Região**: Verificando a relação linear entre o número de médicos ativos e a região. (A mesma hipótese foi descartada pelo BACKWARD)
 
-2. **Análise dos pressupostos**: Avaliação dos principais pressupostos da regressão linear, incluindo:
+2. **Criação do modelo**: Ajuste inicial do modelo de regressão linear utilizando o método de seleção de variáveis **BACKWARD**.
+
+3. **Análise dos pressupostos**: Avaliação dos principais pressupostos da regressão linear, incluindo:
    - Linearidade;
    - Normalidade dos resíduos;
    - Homocedasticidade;
    - Ausência de multicolinearidade;
    - Identificação de observações influentes e pontos de alavancagem.
 
-3. **Validação do modelo final**: Verificação da adequação do modelo selecionado e interpretação dos resultados obtidos.
+4. **Validação do modelo final**: Verificação da adequação do modelo selecionado e interpretação dos resultados obtidos.
 
 
 ```{r, message=FALSE, warning=FALSE}
@@ -45,6 +47,8 @@ database$taxa_medicos <- database$x7 / database$x4 * 100000
 # Criando a taxa de leitos por 100.00 habitantes
 database$taxa_leitos <- database$x8 / database$x4 * 100000
 
+# Transformando a variável (Região geográfica - x16) em factor, maneira do R trabalhar com Dummies
+database$x16 <- as.factor(database$x16)
 
 head(database)
 
@@ -73,8 +77,17 @@ df_clean2$taxa_crimes <- NULL
 
 ```
 
+# Verificando se na **Hipótese 1** existe relação linear entre a região e o número de médicos ativos
+Vale ressaltar que o modelo final não obteve uma relação com a região geográfica
+
+```{r, fig.width=10, fig.height=8}
+
+modelo <- lm(x7 ~ x16, data= database)
+summary(modelo)
+```
 # **Hipótese 1**
 - Análise dos modelos & Presupostos
+
 
 ```{r, fig.width=10, fig.height=8}
 

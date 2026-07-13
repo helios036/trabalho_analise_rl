@@ -36,6 +36,9 @@ database$taxa_medicos <- database$x7 / database$x4 * 100000
 # Criando a taxa de leitos por 100.00 habitantes
 database$taxa_leitos <- database$x8 / database$x4 * 100000
 
+# Transformando a variável (Região geográfica - x16) em factor, maneira do R trabalhar com Dummies
+database$x16 <- as.factor(database$x16)
+
 
 head(database)
 
@@ -200,3 +203,4 @@ abline(h= min(resumo2$cp), col= "red", lty= 2)
 grid(nx = NULL, ny = NULL, col = "lightgray", lty = "dotted")
 
 ````
+
