@@ -174,6 +174,7 @@ grid(nx = NULL, ny = NULL, col = "lightgray", lty = "dotted")
 
 ````
 
+
 ````{r, fig.width=10, fig.height=8}
 
 # SEGUNDA HIPÓTESE
@@ -204,3 +205,46 @@ grid(nx = NULL, ny = NULL, col = "lightgray", lty = "dotted")
 
 ````
 
+
+### **EXTRA: Transformação de Box-Cox** na primeira Hipótese
+Aplicamos a transformação de Box-Cox para aproximar a variável resposta ($Y$) à normalidade, resultando em um $\lambda = 0,7879$. Apesar de situar-se entre as transformações clássicas ($\lambda = 0,5$ e $\lambda = 1,0$), este valor possui baixa interpretabilidade prática. Optamos por seguir com este $\lambda$ para avaliar seu impacto no ajuste final.
+
+### **Seleção de Variáveis**
+Utilizamos o método **BACKWARD** para a definição do modelo.
+
+**Resultados:**
+*   **Composição:** O modelo selecionado manteve as mesmas variáveis da versão não transformada.
+*   **Desempenho:** A transformação não mitigou a multicolinearidade e resultou em métricas de ajuste inferiores.
+*   **Conclusão:** Os resultados indicam que a transformação de Box-Cox não é adequada para este conjunto de dados, não agregando ganhos preditivos ou diagnósticos.
+
+````{r, fig.width=10, fig.height=8}
+
+# Ajustando a variável resposta 
+lambda <- 0.7879
+df_clean$y_transformado <- (df_clean$x7^lambda - 1) / lambda
+
+# Criando um dataframe para as análises
+df_clean1 <- subset(df_clean, select = c(y_transformado, x4, x8, x15, x16, taxa_leitos))
+
+
+# Seleção Automática de Variáveis
+all_models1 <- regsubsets( y_transformado ~ ., data= df_clean1, nvmax= ncol(df_clean1) -1, method = "exhaustive", really.big = TRUE)
+
+# Resumo dos Resultados
+resumo1 <- summary(all_models1)
+resumo1
+
+# Podemos observar que o melhor modelo é o com 3 variávies (x4, x8, x15)
+# Plot do Cp
+plot(resumo1$cp,
+     xlab= "Número de Variáveis",
+     ylab= "Cp de Mallows", 
+     type= "b",
+     pch= 19,
+     col= "blue",
+     main= "Seleção de Modelos 1(y_transformado): AIC vs Número de Variáveis"
+     )
+abline(h= min(resumo1$cp), col= "red", lty= 2)
+grid(nx = NULL, ny = NULL, col = "lightgray", lty = "dotted")
+
+````

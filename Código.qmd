@@ -1,0 +1,602 @@
+---
+title: "Trabalho_ARL"
+output: html_document
+date: "2026-07-14"
+---
+
+Carregamento de pacotes + leitura dos dados da amostra (n=300)
+```{r, message=FALSE, warning=FALSE}
+
+library(ggplot2)
+library(tidyverse)
+library(openxlsx)
+library(readxl)
+library(corrplot)
+library(leaps) # Usado no método BACKWARD
+library(MASS)
+library(lmtest)
+library(car)
+
+#setwd("C:/Users/Helio/OneDrive/Documents/Analise_regressao_linear/trabalho")
+
+#database <- read.xlsx("~/Downloads/dados_amostra.xlsx")
+database <- read.xlsx("dados_amostra.xlsx")
+
+
+# Criar taxa de crimes por 100.000 habitantes
+database$taxa_crimes <- database$x9 / database$x4 * 100000
+
+# Criando a taxa de médicos por 100.00 habitantes
+database$taxa_medicos <- database$x7 / database$x4 * 100000
+
+# Criando a taxa de leitos por 100.00 habitantes
+database$taxa_leitos <- database$x8 / database$x4 * 100000
+
+# Transformando a variável (Região geográfica - x16) em factor, maneira do R trabalhar com Dummies
+database$x16 <- as.factor(database$x16)
+
+colnames(database) <- c("id", "Cidade", "Sigla", "Área da cidade (mi²)", 
+                        "População total", "% pop. 18–34 anos", 
+                        "% pop. 65+ anos", "Médicos ativos", 
+                        "Leitos hospitalares", "Total de crimes", 
+                        "% ensino médio completo", "% bacharéis", 
+                        "% abaixo da pobreza", "% desempregados", 
+                        "Renda per capita", "Renda total (mi USD)", 
+                        "Região geográfica", "Taxa de crimes/100k hab.")
+
+head(database)
+
+```
+
+Classificação das variáveis
+```{r, echo=FALSE}
+
+classificacao <- data.frame(
+  Código      = c("x3","x4","x5","x6","x7","x8","x9","x10","x11","x12","x13","x14","x15","x16","taxa_crimes"),
+  Descrição   = c("Área da cidade (mi²)","População total","% pop. 18-34 anos",
+                  "% pop. 65+ anos","Médicos ativos","Leitos hospitalares",
+                  "Total de crimes","% ensino médio completo","% bacharéis",
+                  "% abaixo da pobreza","% desempregados","Renda per capita",
+                  "Renda total (mi USD)","Região geográfica","Taxa de crimes/100k hab."),
+  Tipo        = c("Quantitativa Discreta","Quantitativa Discreta","Quantitativa Contínua","Quantitativa Contínua", "Quantitativa Discreta","Quantitativa Discreta","Quantitativa Discreta","Quantitativa Contínua", "Quantitativa Contínua","Quantitativa Contínua","Quantitativa Contínua","Quantitativa Contínua", "Quantitativa","Qualitativa","Quantitativa Contínua"))
+
+knitr::kable(classificacao, caption = "Classificação das variáveis do estudo")
+
+```
+
+Análise Descritiva
+Medidas Resumo
+```{r, echo=FALSE}
+vars_num <- database[, c("Área da cidade (mi²)", 
+                             "População total", 
+                             "% pop. 18–34 anos", 
+                             "% pop. 65+ anos", 
+                             "Médicos ativos", 
+                             "Leitos hospitalares", 
+                             "Total de crimes", 
+                             "% ensino médio completo", 
+                             "% bacharéis", 
+                             "% abaixo da pobreza", 
+                             "% desempregados", 
+                             "Renda per capita", 
+                             "Renda total (mi USD)", 
+                             "Taxa de crimes/100k hab.")]
+
+resumo <- data.frame(
+  Variável = names(vars_num),
+  N        = sapply(vars_num, function(x) sum(!is.na(x))),
+  Média    = sapply(vars_num, mean, na.rm = TRUE),
+  Mediana  = sapply(vars_num, median, na.rm = TRUE),
+  DP       = sapply(vars_num, sd, na.rm = TRUE),
+  Mín      = sapply(vars_num, min, na.rm = TRUE),
+  Máx      = sapply(vars_num, max, na.rm = TRUE)
+)
+
+resumo$CV_pct <- resumo$DP / resumo$Média * 100
+
+resumo[, 3:8] <- round(resumo[, 3:8], 2)
+
+knitr::kable(resumo, row.names = FALSE,
+             caption = "Estatísticas descritivas — amostra de modelagem (n=30)")
+
+```
+
+Distribuição por Região
+```{r, echo=FALSE}
+
+freq_regiao <- table(database$`Região geográfica`)
+
+knitr::kable(
+  freq_regiao,
+  col.names = c("Região", "Frequência"),
+  caption   = "Frequência de cidades por região geográfica — amostra de modelagem"
+)
+
+```
+
+Boxplots
+Variáveis
+```{r, fig.width=8, fig.height=5, echo=FALSE}
+
+vars_box <- database%>%
+  dplyr::select(`População total`, `Médicos ativos`, `Leitos hospitalares`, `Renda per capita`, `Renda total (mi USD)`, `Taxa de crimes/100k hab.`) %>%
+  pivot_longer(everything(), names_to = "variavel", values_to = "valor")
+
+```
+
+Principais variáveis
+```{r, fig.width=8, fig.height=5, echo=FALSE}
+ggplot(vars_box, aes(x = variavel, y = valor)) +
+  geom_boxplot(fill = "steelblue", alpha = 0.7) +
+  facet_wrap(~variavel, scales = "free", ncol = 3) +
+  labs(title = "Boxplots das principais variáveis", x = NULL, y = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(), strip.text = element_text(size = 9))
+
+```
+
+Região Geográfica
+```{r, fig.width=8, fig.height=5, echo=FALSE}
+
+ggplot(database, aes(x = `Região geográfica`, y = `Médicos ativos`, fill = `Região geográfica`)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Médicos ativos por região geográfica",
+       x = "Região", y = "Médicos ativos") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+```
+
+Taxa de crime por região
+```{r, fig.width=8, fig.height=5, echo=FALSE}
+
+ggplot(database, aes(x = `Região geográfica`, y = `Taxa de crimes/100k hab.`, fill = `Região geográfica`)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Taxa de crimes por região geográfica",
+       x = "Região", y = "Taxa de crimes por 100.000 hab.") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+```
+
+Histogramas
+```{r, fig.width=10, fig.height=8, echo=FALSE}
+
+vars_hist <- database %>%
+  dplyr::select(`População total`, `% pop. 18–34 anos`, `% pop. 65+ anos`, 
+         `Médicos ativos`, `Leitos hospitalares`, `% ensino médio completo`, 
+         `% bacharéis`, `% abaixo da pobreza`, `% desempregados`, 
+         `Renda per capita`, `Renda total (mi USD)`, `Taxa de crimes/100k hab.`) %>%
+  pivot_longer(everything(), names_to = "variavel", values_to = "valor")
+
+ggplot(vars_hist, aes(x = valor)) +
+  geom_histogram(bins = 10, fill = "steelblue", color = "white", alpha = 0.8) +
+  facet_wrap(~variavel, scales = "free", ncol = 4) +
+  labs(title = "Histogramas das variáveis quantitativas", x = NULL, y = "Frequência") +
+  theme_minimal() +
+  theme(strip.text = element_text(size = 8))
+
+```
+
+### Gráfico de Correlação
+
+```{r, fig.width=9, fig.height=8, echo=FALSE}
+
+vars_cor <- database %>%
+  dplyr::select(`População total`, `% pop. 18–34 anos`, `% pop. 65+ anos`, 
+         `Médicos ativos`, `Leitos hospitalares`, `% ensino médio completo`, 
+         `% bacharéis`, `% abaixo da pobreza`, `% desempregados`, 
+         `Renda per capita`, `Renda total (mi USD)`, `Taxa de crimes/100k hab.`)
+
+names(vars_cor) <- c("Pop.total","% 18-34","% 65+","Médicos","Leitos",
+                     "% Ens.médio","% Bacharéis","% Pobreza",
+                     "% Desemprego","Renda p.c.","Renda total","Taxa crimes")
+
+matriz_cor <- cor(vars_cor, use = "complete.obs")
+
+corrplot(matriz_cor,
+         method  = "color",
+         type    = "upper",
+         addCoef.col = "black",
+         number.cex  = 0.6,
+         tl.cex  = 0.8,
+         tl.col  = "black",
+         col     = colorRampPalette(c("#d73027","white","#1a9850"))(200),
+         title   = "Matriz de correlação entre as variáveis",
+         mar     = c(0, 0, 2, 0))
+
+```
+
+# Criando os DataFrames
+
+Temos duas hipóteses de trabalho presentes nesta análise:
+
+* **Hipótese I (Oferta de Médicos):** Espera-se que o número de médicos ativos em uma cidade esteja relacionado com:
+    * População total;
+    * Número de leitos hospitalares;
+    * Renda total;
+    * Região geográfica (efeito de variação regional).
+
+* **Hipótese II (Violência):** A taxa de crimes (por 100.000 habitantes) está associada a:
+    * Características sócio-demográficas;
+    * Outros aspectos estruturais da cidade.
+    
+Por isso serão segregados as análises de modelos assim como dataframes contendo as variáveis
+
+```{r, fig.width=10, fig.height=8}
+
+# Removendo possíveis valores nulos
+df_clean <- na.omit(database)
+
+# Criando um dataframe para as análises
+
+# PRIMEIRA HIPÓTESE
+df_clean1 <- subset(df_clean, select = c(`População total`, `Médicos ativos`, `Leitos hospitalares`, `Renda total (mi USD)`,
+                                         `Região geográfica`))
+
+# SEGUNDA HIPÓTESE
+df_clean2 <- subset(df_clean, select = c(`Área da cidade (mi²)`, `% pop. 18–34 anos`, `% pop. 65+ anos`, `% ensino médio completo`, 
+         `% bacharéis`, `% abaixo da pobreza`, `% desempregados`, 
+         `Renda per capita`, `Renda total (mi USD)`, `Região geográfica`, `Taxa de crimes/100k hab.`))
+
+```
+
+# Modelo Completo
+
+```{r, fig.width=10, fig.height=8}
+
+# Removendo possíveis valores nulos
+df_clean <- na.omit(database)
+
+# Criando um dataframe para as análises
+
+# PRIMEIRA HIPÓTESE - modelo
+modelo_completo1 = lm(`Médicos ativos`~ `População total` + `Leitos hospitalares` + `Renda total (mi USD)` +  `Região geográfica`, data=
+                        df_clean1)
+
+# SEGUNDA HIPÓTESE - modelo
+modelo_completo2 <- lm(`Taxa de crimes/100k hab.` ~ `Área da cidade (mi²)` + `% pop. 18–34 anos` + `% pop. 65+ anos` + `% ensino médio completo` + `% bacharéis` + `% abaixo da pobreza` + `% desempregados` +
+                         `Renda per capita` + `Renda total (mi USD)` + `Região geográfica`, data= df_clean2)
+
+```
+
+# Box-Cox
+- Verificando se a variável resposta necessita de alguma transformação
+
+```{r, fig.width=10, fig.height=8}
+
+# primeira hipótese
+bc1 <- boxcox(modelo_completo1, lambda =  seq(-2,2,0.1))
+
+# segunda hipótese
+bc2 <- boxcox(modelo_completo2, lambda =  seq(-2,2,0.1))
+
+
+lambda_otimo1 <- bc1$x[which.max(bc1$y)]
+lambda_otimo2 <- bc2$x[which.max(bc2$y)]
+
+# Resultado da transformação Box-Cox
+interpretar_lambda <- function(lambda_otimo, nome_modelo){
+  
+  cat("\n", nome_modelo, "\n")
+  cat("Lambda ótimo =", round(lambda_otimo, 4), "\n")
+  
+  if(lambda_otimo >= 0.75 && lambda_otimo <= 1.25){
+    print("Lambda próximo de 1: manter Y original")
+    
+  } else if(lambda_otimo >= -0.25 && lambda_otimo <= 0.25){
+    print("Lambda próximo de 0: aplicar log(Y)")
+    
+  } else if(lambda_otimo >= 0.25 && lambda_otimo <= 0.75){
+    print("Lambda próximo de 0.5: aplicar sqrt(Y)")
+    
+  } else if(lambda_otimo >= -1.25 && lambda_otimo <= -0.75){
+    print("Lambda próximo de -1: aplicar 1/Y")
+    
+  } else {
+    print(paste("Aplicar transformação Box-Cox com lambda =", 
+                round(lambda_otimo, 4)))
+  }
+}
+
+
+interpretar_lambda(lambda_otimo1, "Modelo 1")
+interpretar_lambda(lambda_otimo2, "Modelo 2")
+
+```
+
+Aplicando a trannsformação de Box-Cox para o Modelo 2
+```{r}
+# Aplicando a transformação 
+df_clean2$taxa_crimes_sqrt <- sqrt(df_clean2$`Taxa de crimes/100k hab.`)
+
+# Excluindo a antiga coluna 
+df_clean2$`Taxa de crimes/100k hab.`  <- NULL
+```
+
+
+# Seleção das Variáveis
+- Utilizando o **método BACKWARD** para escolha do número de variáveis e variáveis
+Modelo 1
+````{r, fig.width=10, fig.height=8}
+
+# PRIMEIRA HIPÓTESE
+# Para a seleção das variáveis iremos utilizar o modelo BACKWARD
+# Dessa forma iremos verificar se as variáveis que mais se ajustam são as mesmas da hipótese
+
+
+# Seleção Automática de Variáveis
+all_models1 <- regsubsets(`Médicos ativos` ~ ., data= df_clean1, nvmax= ncol(df_clean1) -1, method = "exhaustive", really.big = TRUE)
+
+# Resumo dos Resultados
+resumo1 <- summary(all_models1)
+resumo1
+
+# Podemos observar que o melhor modelo é o com 3 variávies (x4, x8, x15)
+# Plot do Cp
+plot(resumo1$cp,
+     xlab= "Número de Variáveis",
+     ylab= "Cp de Mallows", 
+     type= "b",
+     pch= 19,
+     col= "blue",
+     main= "Seleção de Modelos 1: AIC vs Número de Variáveis"
+     )
+abline(h= min(resumo1$cp), col= "red", lty= 2)
+grid(nx = NULL, ny = NULL, col = "lightgray", lty = "dotted")
+
+````
+
+Modelo 2
+````{r, fig.width=10, fig.height=8}
+
+# SEGUNDA HIPÓTESE
+# Para a seleção das variáveis iremos utilizar o modelo BACKWARD
+# Dessa forma iremos verificar se as variáveis que mais se ajustam são as mesmas da hipótese
+
+
+
+# Seleção Automática de Variáveis
+all_models2 <- regsubsets(taxa_crimes_sqrt ~ ., data= df_clean2, nvmax= ncol(df_clean2) -1, method = "exhaustive", really.big = TRUE)
+
+# Resumo dos Resultados
+resumo2 <- summary(all_models2)
+resumo2
+
+# Podemos observar que o melhor modelo é o com 4 variávies (x5, x12, x14, x16)
+# Plot do Cp
+plot(resumo2$cp,
+     xlab= "Número de Variáveis",
+     ylab= "Cp de Mallows", 
+     type= "b",
+     pch= 19,
+     col= "blue",
+     main= "Seleção de Modelos 2: AIC vs Número de Variáveis"
+     )
+abline(h= min(resumo2$cp), col= "red", lty= 2)
+grid(nx = NULL, ny = NULL, col = "lightgray", lty = "dotted")
+
+````
+
+## Resumo do Processo
+
+Este documento detalha a análise das regressões lineares desenvolvidas.
+
+1. **Relação entre médicos ativos e Região**: Verificando a relação linear entre o número de médicos ativos e a região. (A mesma hipótese foi descartada pelo BACKWARD)
+
+2. **Criação do modelo**: Ajuste inicial do modelo de regressão linear utilizando o método de seleção de variáveis **BACKWARD**.
+
+3. **Análise dos pressupostos**: Avaliação dos principais pressupostos da regressão linear, incluindo:
+   - Linearidade;
+   - Normalidade dos resíduos;
+   - Homocedasticidade;
+   - Ausência de multicolinearidade;
+   - Identificação de observações influentes e pontos de alavancagem.
+
+4. **Validação do modelo final**: Verificação da adequação do modelo selecionado e interpretação dos resultados obtidos.
+
+# Criando os DataFrames de acordo com o melhor modelo BACKWARD
+```{r, fig.width=10, fig.height=8}
+
+# Removendo possíveis valores nulos
+df_clean <- na.omit(database)
+
+# Criando um dataframe para as análises
+
+# PRIMEIRA HIPÓTESE
+df_clean1 <- subset(df_clean, select = c(`Médicos ativos`, `População total`, `Leitos hospitalares`, `Renda total (mi USD)`))
+
+# SEGUNDA HIPÓTESE
+df_clean2 <- subset(df_clean, select = c(`Taxa de crimes/100k hab.`, `% pop. 18–34 anos`, `% abaixo da pobreza`,
+                         `Renda per capita`, `Região geográfica`))
+
+# Trasnformando a variável Y
+df_clean2$taxa_crimes_sqrt <- sqrt(df_clean2$`Taxa de crimes/100k hab.`)
+df_clean2$taxa_crimes <- NULL
+
+```
+
+# Verificando se na **Hipótese 1** existe relação linear entre a região e o número de médicos ativos
+Vale ressaltar que o modelo final não obteve uma relação com a região geográfica
+
+```{r, fig.width=10, fig.height=8}
+
+modelo <- lm(`Médicos ativos` ~ `Região geográfica`, data= database)
+summary(modelo)
+```
+
+# **Hipótese 1**
+- Análise dos modelos & Presupostos
+
+```{r, fig.width=10, fig.height=8}
+
+# Modelo 
+modelo1 <- lm(`Médicos ativos` ~ `População total` + `Leitos hospitalares` + `Renda total (mi USD)`, data= df_clean1)
+
+diagnostico_modelo <- function(modelo){
+  
+  # 1) Resumo geral
+  print(summary(modelo))
+  
+  # 2) Diagnóstico gráfico
+  par(mfrow = c(2,2))
+  plot(modelo, which = 1:4)
+  
+  # 3) Teste de Normalidade (Shapiro-Wilk)
+  cat("\n--- Teste de Normalidade (Shapiro-Wilk) ---\n")
+  shapiro_res <- shapiro.test(residuals(modelo))
+  print(shapiro_res)
+  if(shapiro_res$p.value > 0.05) {
+    cat("Interpretação: Resíduos seguem distribuição normal (p > 0.05).\n")
+  } else {
+    cat("Interpretação: Resíduos NÃO seguem distribuição normal (p <= 0.05).\n")
+  }
+  
+  # 4) Teste de Heterocedasticidade (Breusch-Pagan)
+  cat("\n--- Teste de Heterocedasticidade (Breusch-Pagan) ---\n")
+  bp_res <- lmtest::bptest(modelo)
+  print(bp_res)
+  if(bp_res$p.value > 0.05) {
+    cat("Interpretação: Homocedasticidade confirmada (p > 0.05).\n")
+  } else {
+    cat("Interpretação: Heterocedasticidade detectada (p <= 0.05).\n")
+  }
+  
+  # 5) Multicolinearidade (VIF)
+  cat("\n--- Multicolinearidade (VIF) ---\n")
+  tryCatch({
+    vif_res <- car::vif(modelo)
+    print(vif_res)
+    if(any(vif_res > 10)) {
+      cat("Interpretação: Problema severo de multicolinearidade (VIF > 10).\n")
+    } else if(any(vif_res > 5)) {
+      cat("Interpretação: Atenção à multicolinearidade (VIF entre 5 e 10).\n")
+    } else {
+      cat("Interpretação: Multicolinearidade sob controle (VIF < 5).\n")
+    }
+  }, error = function(e) {
+    cat("VIF não aplicável ou erro na estrutura do modelo.\n")
+  })
+}
+
+# Executar diagnóstico do modelo 1
+diagnostico_modelo(modelo1)
+```
+
+
+# **Hipótese 2**
+- Análise dos modelos & Presupostos
+
+```{r, fig.width=10, fig.height=8}
+
+# Modelo 2 
+modelo2 <- lm(`taxa_crimes_sqrt` ~ `% abaixo da pobreza` + `Renda per capita` + `Região geográfica`, data= df_clean2)
+
+
+# Executar diagnóstico do modelo 2
+diagnostico_modelo(modelo2)
+```
+
+# **Validação do Modelo**
+
+Carregando os dados para a validação dos modelos
+
+
+```{r, fig.width=10, fig.height=8}
+
+# Carregando os dados 
+df_validacao <- read.xlsx("dados_validacao.xlsx")
+
+# Criar taxa de crimes por 100.000 habitantes
+df_validacao$taxa_crimes <- df_validacao$x9 / database$x4 * 100000
+
+
+# Alterando os nomes das colunas
+colnames(df_validacao) <- c("id", "Cidade", "Sigla", "Área da cidade (mi²)", 
+                        "População total", "% pop. 18–34 anos", 
+                        "% pop. 65+ anos", "Médicos ativos", 
+                        "Leitos hospitalares", "Total de crimes", 
+                        "% ensino médio completo", "% bacharéis", 
+                        "% abaixo da pobreza", "% desempregados", 
+                        "Renda per capita", "Renda total (mi USD)", 
+                        "Região geográfica", "Taxa de crimes/100k hab.")
+
+
+# Transformando a variável (Região geográfica - x16) em factor, maneira do R trabalhar com Dummies - Utilizando a posição da coluna
+df_validacao[, 17] <- as.factor(df_validacao[, 17])
+
+# Trasnformando a variável Y (Segunda Hipótese)
+df_validacao$taxa_crimes_sqrt <- sqrt(df_validacao$`Taxa de crimes/100k hab.`)
+#df_validacao$`Taxa de crimes/100k hab.` <- NULL
+
+# Criando um dataframe para as análises
+# PRIMEIRA HIPÓTESE
+colunas_interesse1 <- c("Médicos ativos", "População total", "Leitos hospitalares", "Renda total (mi USD)")
+df_val1 <- df_validacao[, colunas_interesse1]
+
+# SEGUNDA HIPÓTESE
+colunas_interesse2 <- c("taxa_crimes_sqrt", "% pop. 18–34 anos", "% abaixo da pobreza", "Renda per capita", "Região geográfica")
+df_val2 <- df_validacao[, colunas_interesse2]
+
+```
+
+# Validação da Primeira Hipótese
+
+```{r, fig.width=10, fig.height=8}
+
+
+# Obter predições do treino e teste (para comparação)
+previsoes_treino <- predict(modelo1, newdata = df_clean1) # treino
+previsoes <- predict(modelo1, newdata = df_val1) # teste
+
+# Função para calcular métricas
+calcular_metricas <- function(reais, preditos) {
+  mse <- mean((reais - preditos)^2)
+  rmse <- sqrt(mse)
+  mae <- mean(abs(reais - preditos))
+  r2 <- 1 - (sum((reais - preditos)^2) / sum((reais - mean(reais))^2))
+  return(c(RMSE = rmse, MAE = mae, R2 = r2))
+}
+
+# Calcular métricas para os dois conjuntos
+metricas_treino <- calcular_metricas(df_clean1$`Médicos ativos`, previsoes_treino)
+metricas_teste <- calcular_metricas(df_val1$`Médicos ativos`, previsoes)
+
+# Criar tabela comparativa
+tabela_comparativa <- rbind(Treino = metricas_treino, Teste = metricas_teste)
+
+# Exibir resultados
+print(round(tabela_comparativa, 4))
+
+# Visualização das predições vs Reais
+plot(df_validacao$x7, previsoes, 
+     main = "Valores Reais vs Previstos (Primeira Hipótese)",
+     xlab = "Valores Reais (x7)", ylab = "Valores Previstos")
+abline(0, 1, col = "red", lwd = 2) # Linha de perfeição
+```
+# Validação da Segunda Hipótese
+
+```{r, fig.width=10, fig.height=8}
+
+
+# Obter predições do treino e teste (para comparação)
+previsoes_treino <- predict(modelo2, newdata = df_clean2) # treino
+previsoes <- predict(modelo2, newdata = df_val2) # teste
+
+
+# Calcular métricas para os dois conjuntos
+metricas_treino <- calcular_metricas(df_clean2$taxa_crimes_sqrt, previsoes_treino)
+metricas_teste <- calcular_metricas(df_val2$taxa_crimes_sqrt, previsoes)
+
+# Criar tabela comparativa
+tabela_comparativa <- rbind(Treino = metricas_treino, Teste = metricas_teste)
+
+# Exibir resultados
+print(round(tabela_comparativa, 4))
+
+# Visualização das predições vs Reais
+plot(df_validacao$taxa_crimes_sqrt, previsoes, 
+     main = "Valores Reais vs Previstos (Segunda Hipótese)",
+     xlab = "Valores Reais (x7)", ylab = "Valores Previstos")
+abline(0, 1, col = "red", lwd = 2) # Linha de perfeição
+```

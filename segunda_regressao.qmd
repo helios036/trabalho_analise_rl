@@ -41,12 +41,6 @@ database <- read.xlsx("dados_amostra.xlsx")
 # Criar taxa de crimes por 100.000 habitantes
 database$taxa_crimes <- database$x9 / database$x4 * 100000
 
-# Criando a taxa de médicos por 100.00 habitantes
-database$taxa_medicos <- database$x7 / database$x4 * 100000
-
-# Criando a taxa de leitos por 100.00 habitantes
-database$taxa_leitos <- database$x8 / database$x4 * 100000
-
 # Transformando a variável (Região geográfica - x16) em factor, maneira do R trabalhar com Dummies
 database$x16 <- as.factor(database$x16)
 
@@ -62,6 +56,7 @@ head(database)
 
 # Removendo possíveis valores nulos
 df_clean <- na.omit(database)
+
 
 # Criando um dataframe para as análises
 
@@ -96,82 +91,48 @@ modelo1 <- lm(x7 ~ x4 + x8 + x15, data= df_clean1)
 
 diagnostico_modelo <- function(modelo){
   
-  # ============================================================
-  # 1) Resumo geral do modelo
-  # ============================================================
-  # Apresenta:
-  # - Coeficientes estimados
-  # - Erros padrões
-  # - Teste t dos parâmetros
-  # - R² e R² ajustado
-  # - Teste F global do modelo
-  
+  # 1) Resumo geral
   print(summary(modelo))
   
-  
-  # ============================================================
-  # 2) Diagnóstico gráfico dos resíduos
-  # ============================================================
-  
+  # 2) Diagnóstico gráfico
   par(mfrow = c(2,2))
+  plot(modelo, which = 1:4)
   
-  # Gráfico 1:
-  # Resíduos vs Valores Ajustados
-  # Verifica:
-  # - Linearidade
-  # - Homocedasticidade
-  # Esperado: dispersão aleatória dos pontos
-  plot(modelo, which = 1)
+  # 3) Teste de Normalidade (Shapiro-Wilk)
+  cat("\n--- Teste de Normalidade (Shapiro-Wilk) ---\n")
+  shapiro_res <- shapiro.test(residuals(modelo))
+  print(shapiro_res)
+  if(shapiro_res$p.value > 0.05) {
+    cat("Interpretação: Resíduos seguem distribuição normal (p > 0.05).\n")
+  } else {
+    cat("Interpretação: Resíduos NÃO seguem distribuição normal (p <= 0.05).\n")
+  }
   
+  # 4) Teste de Heterocedasticidade (Breusch-Pagan)
+  cat("\n--- Teste de Heterocedasticidade (Breusch-Pagan) ---\n")
+  bp_res <- lmtest::bptest(modelo)
+  print(bp_res)
+  if(bp_res$p.value > 0.05) {
+    cat("Interpretação: Homocedasticidade confirmada (p > 0.05).\n")
+  } else {
+    cat("Interpretação: Heterocedasticidade detectada (p <= 0.05).\n")
+  }
   
-  # Gráfico 2:
-  # Gráfico Q-Q dos resíduos
-  # Verifica:
-  # - Normalidade dos resíduos
-  # Esperado: pontos próximos da linha reta
-  plot(modelo, which = 2)
-  
-  
-  # Gráfico 3:
-  # Escala-location
-  # Verifica novamente a homogeneidade da variância
-  plot(modelo, which = 3)
-  
-  
-  # Gráfico 4:
-  # Distância de Cook
-  # Identifica observações influentes
-  # Regra comum:
-  # valores maiores que 4/n podem indicar influência
-  plot(modelo, which = 4)
-  
-  
-  # ============================================================
-  # 3) Teste de heterocedasticidade
-  # ============================================================
-  # H0: Variância dos resíduos é constante (homocedasticidade)
-  # H1: Variância dos resíduos não é constante
-  
-  print('Teste de heterocedasticidade:')
-  print(
-    bptest(modelo)
-  )
-  
-  
-  # ============================================================
-  # 4) Multicolinearidade
-  # ============================================================
-  # Mede a correlação entre as variáveis explicativas.
-  #
-  # Interpretação:
-  # VIF < 5  -> aceitável
-  # VIF 5-10 -> atenção
-  # VIF > 10 -> problema de multicolinearidade
-  print('Multicolinearidade:')
-  print(
-    vif(modelo)
-  )
-  
+  # 5) Multicolinearidade (VIF)
+  cat("\n--- Multicolinearidade (VIF) ---\n")
+  tryCatch({
+    vif_res <- car::vif(modelo)
+    print(vif_res)
+    if(any(vif_res > 10)) {
+      cat("Interpretação: Problema severo de multicolinearidade (VIF > 10).\n")
+    } else if(any(vif_res > 5)) {
+      cat("Interpretação: Atenção à multicolinearidade (VIF entre 5 e 10).\n")
+    } else {
+      cat("Interpretação: Multicolinearidade sob controle (VIF < 5).\n")
+    }
+  }, error = function(e) {
+    cat("VIF não aplicável ou erro na estrutura do modelo.\n")
+  })
 }
 
 # Executar diagnóstico do modelo 1
@@ -184,11 +145,169 @@ diagnostico_modelo(modelo1)
 ```{r, fig.width=10, fig.height=8}
 
 # Modelo 2 
-modelo2 <- lm(taxa_crimes_sqrt ~ x5 + x12 + x14 + x16, data= df_clean2)
+modelo2 <- lm(taxa_crimes_sqrt ~ x12 + x14 + x16, data= df_clean2)
 
 
 # Executar diagnóstico do modelo 2
 diagnostico_modelo(modelo2)
 ```
 
+# **Validação do Modelo**
 
+Carregando os dados para a validação dos modelos
+
+
+```{r, fig.width=10, fig.height=8}
+
+
+df_validacao <- read.xlsx("dados_validacao.xlsx")
+
+# Criar taxa de crimes por 100.000 habitantes
+df_validacao$taxa_crimes <- df_validacao$x9 / df_validacao$x4 * 100000
+
+
+# Transformando a variável (Região geográfica - x16) em factor, maneira do R trabalhar com Dummies
+df_validacao$x16 <- as.factor(df_validacao$x16)
+
+# Trasnformando a variável Y (Segunda Hipótese)
+df_validacao$taxa_crimes_sqrt <- sqrt(df_validacao$taxa_crimes)
+df_validacao$taxa_crimes <- NULL
+
+# Criando um dataframe para as análises
+# PRIMEIRA HIPÓTESE
+df_val1 <- subset(df_validacao, select = c(x7, x4, x8, x15))
+
+# SEGUNDA HIPÓTESE
+df_val2 <- subset(df_validacao, select = c(taxa_crimes_sqrt, x5, x12, x14, x16))
+
+```
+
+# Validação da Primeira Hipótese
+
+```{r, fig.width=10, fig.height=8}
+
+
+# Obter predições do treino e teste (para comparação)
+previsoes_treino <- predict(modelo1, newdata = df_clean1) # treino
+previsoes <- predict(modelo1, newdata = df_val1) # teste
+
+# Função para calcular métricas
+calcular_metricas <- function(reais, preditos) {
+  mse <- mean((reais - preditos)^2)
+  rmse <- sqrt(mse)
+  mae <- mean(abs(reais - preditos))
+  r2 <- 1 - (sum((reais - preditos)^2) / sum((reais - mean(reais))^2))
+  return(c(RMSE = rmse, MAE = mae, R2 = r2))
+}
+
+# Calcular métricas para os dois conjuntos
+metricas_treino <- calcular_metricas(df_clean1$x7, previsoes_treino)
+metricas_teste <- calcular_metricas(df_val1$x7, previsoes)
+
+# Criar tabela comparativa
+tabela_comparativa <- rbind(Treino = metricas_treino, Teste = metricas_teste)
+
+# Exibir resultados
+print(round(tabela_comparativa, 4))
+
+# Visualização das predições vs Reais
+plot(df_validacao$x7, previsoes, 
+     main = "Valores Reais vs Previstos (Primeira Hipótese)",
+     xlab = "Valores Reais (x7)", ylab = "Valores Previstos")
+abline(0, 1, col = "red", lwd = 2) # Linha de perfeição
+```
+
+
+# Validação da Segunda Hipótese
+
+```{r, fig.width=10, fig.height=8}
+
+
+# Obter predições do treino e teste (para comparação)
+previsoes_treino <- predict(modelo2, newdata = df_clean2) # treino
+previsoes <- predict(modelo2, newdata = df_val2) # teste
+
+
+# Calcular métricas para os dois conjuntos
+metricas_treino <- calcular_metricas(df_clean2$taxa_crimes_sqrt, previsoes_treino)
+metricas_teste <- calcular_metricas(df_val2$taxa_crimes_sqrt, previsoes)
+
+# Criar tabela comparativa
+tabela_comparativa <- rbind(Treino = metricas_treino, Teste = metricas_teste)
+
+# Exibir resultados
+print(round(tabela_comparativa, 4))
+
+
+# Visualização das predições vs Reais
+plot(df_validacao$taxa_crimes_sqrt, previsoes, 
+     main = "Valores Reais vs Previstos (Segunda Hipótese)",
+     xlab = "Valores Reais (x7)", ylab = "Valores Previstos")
+abline(0, 1, col = "red", lwd = 2) # Linha de perfeição
+```
+
+
+
+
+
+
+
+### **EXTRA: Análise de pontos influentes**
+Conforme solicitado, identificamos e isolamos os pontos influentes detectados no modelo. Esta etapa tem caráter exploratório, permitindo-nos observar o comportamento e a performance do modelo caso tais observações fossem removidas do conjunto de dados.
+
+## **Hipótese 1**
+
+```{r, fig.width=10, fig.height=8}
+
+# Ajuste o modelo original
+modelo_orig <- lm(x7 ~ x4 + x8 + x15, data = df_clean1)
+
+# Calcule a Distância de Cook
+cooks_d <- cooks.distance(modelo_orig)
+
+# Defina o ponto de corte (limiar)
+# O critério 4/n é amplamente utilizado
+limiar <- 4 / nrow(df_clean1)
+
+# Identifique as observações que superam o limiar
+pontos_influentes <- which(cooks_d > limiar)
+
+# Crie o novo banco de dados removendo esses pontos
+database_limpo <- df_clean1[-pontos_influentes, ]
+
+# Rodar o modelo com os dados filtrados
+modelo_sem_influentes <- lm(x7 ~ x4 + x8 + x15, data = database_limpo)
+
+
+# Executar diagnóstico do modelo 
+diagnostico_modelo(modelo_sem_influentes)
+```
+
+## **Hipótese 2**
+
+```{r, fig.width=10, fig.height=8}
+
+# Ajuste o modelo original
+modelo_orig <- lm(taxa_crimes_sqrt ~ x12 + x14 + x16, data= df_clean2)
+
+# Calcule a Distância de Cook
+cooks_d <- cooks.distance(modelo_orig)
+
+# Defina o ponto de corte (limiar)
+# O critério 4/n é amplamente utilizado
+limiar <- 4 / nrow(df_clean2)
+
+# Identifique as observações que superam o limiar
+pontos_influentes <- which(cooks_d > limiar)
+
+# Crie o novo banco de dados removendo esses pontos
+database_limpo <- df_clean2[-pontos_influentes, ]
+
+# Rodar o modelo com os dados filtrados
+modelo_sem_influentes <- lm(taxa_crimes_sqrt ~ x12 + x14 + x16, data = database_limpo)
+
+
+
+# Executar diagnóstico do modelo 
+diagnostico_modelo(modelo_sem_influentes)
+```
