@@ -197,7 +197,7 @@ calcular_metricas <- function(reais, preditos) {
   rmse <- sqrt(mse)
   mae <- mean(abs(reais - preditos))
   r2 <- 1 - (sum((reais - preditos)^2) / sum((reais - mean(reais))^2))
-  return(c(RMSE = rmse, MAE = mae, R2 = r2))
+  return(c(MSE = mse, RMSE = rmse, MAE = mae, R2 = r2))
 }
 
 # Calcular métricas para os dois conjuntos
@@ -216,7 +216,6 @@ plot(df_validacao$x7, previsoes,
      xlab = "Valores Reais (x7)", ylab = "Valores Previstos")
 abline(0, 1, col = "red", lwd = 2) # Linha de perfeição
 ```
-
 
 # Validação da Segunda Hipótese
 
