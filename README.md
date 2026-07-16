@@ -8,6 +8,7 @@ Este projeto contém uma análise exploratória e modelagem estatística focada 
 
 ## Estrutura do Projeto
 * `dados_amostra.xlsx`: Base de dados utilizada para as análises.
+* `dados_validacao.xlsx`: Base de dados utilizada para validação dos modelos.
 * `dados_trabalho.xlsx`: Base de dados completa contendo informações adicionais.
 * O processamento inclui limpeza de dados, criação de novas variáveis (taxas por 100k habitantes) e seleção automática de modelos via *Backward Selection* e busca exaustiva[cite: 1, 2].
 

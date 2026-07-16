@@ -37,17 +37,8 @@ head(database)
 ## Amostragem
 
 ```{r}
-
-set.seed(0038) # Define a seed para garantir que o resultado seja o mesmo se rodar novamente
-n_amostra = 300 # Tamanho da amostra
-
-indices_amostra <- sample(1:nrow(database), size = n_amostra, replace = FALSE)
-
-dados_modelo    <- database[indices_amostra, ]
-dados_validacao <- database[-indices_amostra, ]
-
-cat("Observações para o modelo:   ", nrow(dados_modelo), "\n")
-cat("Observações para validação:  ", nrow(dados_validacao), "\n")
+# Copiando o dataframe(Ajustando a análise exploratória para a população)
+dados_modelo    <- database
 
 ```
 

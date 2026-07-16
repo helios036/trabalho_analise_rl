@@ -4,7 +4,7 @@ output: html_document
 date: "2026-07-14"
 ---
 
-Carregamento de pacotes + leitura dos dados da amostra (n=300)
+Carregamento de pacotes + leitura dos dados da População para Análise Exploratória
 ```{r, message=FALSE, warning=FALSE}
 
 library(ggplot2)
@@ -20,7 +20,7 @@ library(car)
 #setwd("C:/Users/Helio/OneDrive/Documents/Analise_regressao_linear/trabalho")
 
 #database <- read.xlsx("~/Downloads/dados_amostra.xlsx")
-database <- read.xlsx("dados_amostra.xlsx")
+database <- read.xlsx("dados_trabalho.xlsx")
 
 
 # Criar taxa de crimes por 100.000 habitantes
@@ -223,10 +223,41 @@ Temos duas hipóteses de trabalho presentes nesta análise:
     
 Por isso serão segregados as análises de modelos assim como dataframes contendo as variáveis
 
+
+Leitura dos dados da amostra (n=300)
+```{r, message=FALSE, warning=FALSE}
+
+# Carregando os dados da amostra para a modelgem
+database_amostra <- read.xlsx("dados_amostra.xlsx")
+
+
+# Criar taxa de crimes por 100.000 habitantes
+database_amostra$taxa_crimes <- database_amostra$x9 / database_amostra$x4 * 100000
+
+# Criando a taxa de médicos por 100.00 habitantes
+database_amostra$taxa_medicos <- database_amostra$x7 / database_amostra$x4 * 100000
+
+# Criando a taxa de leitos por 100.00 habitantes
+database_amostra$taxa_leitos <- database_amostra$x8 / database_amostra$x4 * 100000
+
+# Transformando a variável (Região geográfica - x16) em factor, maneira do R trabalhar com Dummies
+database_amostra$x16 <- as.factor(database_amostra$x16)
+
+colnames(database_amostra) <- c("id", "Cidade", "Sigla", "Área da cidade (mi²)", 
+                        "População total", "% pop. 18–34 anos", 
+                        "% pop. 65+ anos", "Médicos ativos", 
+                        "Leitos hospitalares", "Total de crimes", 
+                        "% ensino médio completo", "% bacharéis", 
+                        "% abaixo da pobreza", "% desempregados", 
+                        "Renda per capita", "Renda total (mi USD)", 
+                        "Região geográfica", "Taxa de crimes/100k hab.")
+
+
+```
 ```{r, fig.width=10, fig.height=8}
 
 # Removendo possíveis valores nulos
-df_clean <- na.omit(database)
+df_clean <- na.omit(database_amostra)
 
 # Criando um dataframe para as análises
 
@@ -246,7 +277,7 @@ df_clean2 <- subset(df_clean, select = c(`Área da cidade (mi²)`, `% pop. 18–
 ```{r, fig.width=10, fig.height=8}
 
 # Removendo possíveis valores nulos
-df_clean <- na.omit(database)
+df_clean <- na.omit(database_amostra)
 
 # Criando um dataframe para as análises
 
